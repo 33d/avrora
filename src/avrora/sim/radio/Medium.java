@@ -258,6 +258,11 @@ public class Medium {
         }
         //Ending reception. Remove event.
         public final void endReceive() {
+	    // Reception has been terminated, but check if receiver was still locked onto some transmission
+	    if (locked) {
+                nextByte(false, (byte)0);
+                if (probeList != null) probeList.fireAfterReceiveEnd(Receiver.this);
+	    }
             activated = false;
             locked = false;
             clock.removeEvent(ticker);
