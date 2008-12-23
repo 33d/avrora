@@ -207,7 +207,7 @@ public class SensorSimulation extends Simulation {
             if (topology == null && !TOPOLOGY.isBlank()) {
                 try {
                     topology = new Topology(TOPOLOGY.get());
-                    radioModel = new RadiusModel(1.0, 15.0);
+                    radioModel = new RadiusModel(1.0, RANGE.get());
                 } catch (IOException e) {
                     throw Util.unexpected(e);
                 }
