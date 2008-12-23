@@ -195,8 +195,11 @@ public class SPI extends AtmelInternalDevice implements SPIDevice, InterruptTabl
          * @return the value from the receive buffer
          */
         public byte read() {
+	    byte val = receiveReg.read();
             if ( spifAccessed ) unpostSPIInterrupt();
-            return receiveReg.read();
+            if (devicePrinter.enabled)
+                devicePrinter.println("SPI: read " + StringUtil.toMultirepString(val, 8) + " from SPDR");
+            return val;
         }
 
         /**
@@ -206,6 +209,8 @@ public class SPI extends AtmelInternalDevice implements SPIDevice, InterruptTabl
          */
         public void write(byte val) {
             // TODO: implement write collision detection
+            if (devicePrinter.enabled)
+                devicePrinter.println("SPI: wrote " + StringUtil.toMultirepString(val, 8) + " to SPDR");
             transmitReg.write(val);
         }
     }
