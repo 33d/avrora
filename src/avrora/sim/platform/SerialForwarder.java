@@ -60,6 +60,13 @@ public class SerialForwarder implements USART.USARTDevice {
     private SFTicker ticker;
     private byte[] data;
     protected int portNumber;
+    
+    /**
+     * Connects the traffic to and from a socket and directs it into the UART chip of a simulated device.
+     *
+     * @param usart USART device to redirect
+     * @param pn socket port number
+     */
 
     public SerialForwarder(USART usart, int pn) {
         usart.connect(this);
