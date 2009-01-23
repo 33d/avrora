@@ -34,34 +34,71 @@ package avrora.monitors;
 
 import avrora.sim.Simulator;
 import avrora.sim.util.MemPrint;
+import avrora.core.Program;
+import avrora.core.SourceMapping;
+
+import cck.text.StringUtil;
+import cck.util.Option;
+
+import java.text.StringCharacterIterator;
+import java.util.Iterator;
 
 /**
  * The <code>PrintMonitor</code> gives apps a simple way to tell the
  * simulator to print a string or int to the screen
  *
  * @author John Regehr
+ * @author Rodolfo de Paz
  */
 public class PrintMonitor extends MonitorFactory {
 
+    protected final Option.Str VARIABLENAME = newOption("VariableName","debugbuf1" ,
+            "This option specifies the name of the variable to print");
+    protected final Option.Str LEN = newOption("Len","30" ,
+            "This option specifies the length of the variable to print");
+    protected final Option.Str LOG = newOption("printlogfile", "",
+            "This option specifies whether the print monitor should log changes to each " +
+            "node's energy state. If this option is specified, then each node's print " +
+            "statements will be written to <option>.#, where '#' represents the " +
+            "node ID.");
     public class Monitor implements avrora.monitors.Monitor {
-        public final MemPrint memprofile;
-        private static final int BASE = 3000;
-        private static final int MAX = 100;
+        public final MemPrint memprofile;        
+        private final String varname = VARIABLENAME.get();             
+        private final String l = LEN.get();        
+        private int BASE;    
+        protected Simulator simulator;
+        private String fileName;
 
         Monitor(Simulator s) {
-            memprofile = new MemPrint(BASE, MAX);
-            s.insertWatch(memprofile, BASE);
+            this.simulator = s;
+            Program p = s.getProgram();               
+            Iterator it = p.getSourceMapping().getIterator();
+            while (it.hasNext()) {
+                SourceMapping.Location tempLoc = (SourceMapping.Location)it.next();
+                //Look for the label that equals the desired variable name inside the map file
+                if (varname.equals(tempLoc.name)){            
+                    String st = StringUtil.toHex((long)tempLoc.vma_addr,3);
+                    st = st.substring(3,6);
+                    BASE = StringUtil.readHexValue(new StringCharacterIterator(st),3);
+                }                                      
+            }            
+            int MAX = Integer.parseInt(l);
+            if ( !LOG.isBlank() ) fileName = LOG.get() + simulator.getID();  
+            else fileName = "";
+            memprofile = new MemPrint(BASE, MAX, fileName);
+            s.insertWatch(memprofile, BASE);                                    
         }
 
         public void report() {
             // do nothing.
         }
     }
+     
 
     public PrintMonitor() {
         super("The \"print\" monitor watches a dedicated range of SRAM for instructions " +
-                "to print a string or int to the screen.  Be careful to set the BASE variable " +
-                "to point to a block of RAM not otherwise used by your app.");
+                "to print a string or int to the screen.  Set the VariableName and avrora " +
+                "will look directly inside the map file the part of the SRAM to print");
     }
 
     public avrora.monitors.Monitor newMonitor(Simulator s) {
