@@ -94,6 +94,8 @@ public class LegacyDisassembler implements AbstractDisassembler {
             return decode_root(word1);
         } catch ( InvalidInstruction e ) {
             return null;
+        }catch ( LegacyInstr.InvalidImmediate e ) {
+            return null;
         }
     }
 
