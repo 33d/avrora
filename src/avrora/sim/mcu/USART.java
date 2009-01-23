@@ -359,6 +359,7 @@ public class USART extends AtmelInternalDevice {
 
             public byte read() {
                 if (readyQueue.isEmpty()) {
+                    UCSRnA_reg.UDRE_flag.flag(true);//we must indicate register data empty
                     return (byte)0;
                 }
                 USARTFrameWrapper current = (USARTFrameWrapper)readyQueue.removeLast();
