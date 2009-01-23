@@ -163,6 +163,13 @@ public class ByteFIFO {
         overflow = false;
         underflow = false;
     }
+    
+    public void refill() {
+        overflow = false;
+        underflow = false;
+        head = 0;
+        used = 0;        
+    }
 
     public void clear() {
         overflow = false;
