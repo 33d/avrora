@@ -113,6 +113,7 @@ public class Defaults {
             monitorMap.addClass("ioregs", IORegMonitor.class);
             monitorMap.addClass("virgil", VirgilMonitor.class);
             monitorMap.addClass("real-time", RealTimeMonitor.class);
+            monitorMap.addClass("sniffer", SnifferMonitor.class);
 
             HelpCategory hc = new HelpCategory("monitors", "Help for the supported simulation monitors.");
             hc.addOptionValueSection("SIMULATION MONITORS", "Avrora's simulator offers the ability to install execution " +
