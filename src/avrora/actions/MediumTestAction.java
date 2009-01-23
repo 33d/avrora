@@ -67,7 +67,8 @@ public class MediumTestAction extends Action {
 
         Simulator.Event send = new Simulator.Event() {
             public void fire() {
-                t.beginTransmit(0);
+				//power and frequency are doubles now
+                t.beginTransmit(0.0,2.4);
             }
         };
 
@@ -104,12 +105,28 @@ public class MediumTestAction extends Action {
         TestReceiver(Medium m, Clock c) {
             super(m, c);
         }
-        public void nextByte(boolean lock, byte b) {
+        public byte nextByte(boolean lock, byte b) {
             if (lock)
                 Terminal.println(clock.getCount()+" "+StringUtil.toMultirepString(b, 8));
             else
                 Terminal.println(clock.getCount()+" lock end");
+            return b;
         }
+                 public void setRssiValid (boolean v){
+             //do nothing
+         }
+          public boolean getRssiValid (){
+              //do nothing
+              return false;
+         }
+          public void setRSSI (double PRec){
+              //do nothing              
+          }
+          public void setBER (double BER){             
+            //do nothing
+        }
+        
+        
     }
 }
 
