@@ -287,7 +287,7 @@ public class CC1000Radio implements Radio {
             else receiver.beginReceive();
 
             if (txPd) transmitter.endTransmit();
-            else transmitter.beginTransmit(getPower());
+            else transmitter.beginTransmit(getPower(),getFrequency());
 
             if (!rxPd || !txPd) {
                 ticker.activate();
@@ -998,19 +998,29 @@ public class CC1000Radio implements Radio {
 
 
     /**
-     * get the transmission power
+     * get the transmission power (dB)
      */
-    public int getPower() {
-        return PA_POW_reg.getPower();
-    }
+    public double getPower() {
+        double powerSet = (double)PA_POW_reg.getPower();
+        double power;
+        //convert to dB (by linearization) we distinguish values less than 16
+        //and higher ones. Probably a lookup table and Spline
+        //interpolation would be nice here
+        if (powerSet < 16)
+            power = 0.12 * powerSet - 1.8;
+        else
+            power = 0.00431 * powerSet - 0.06459;
+         
+      return power;
+   }
 
     /**
-     * get transmission frequency
+     * get transmission frequency (Mhz)
      */
     public double getFrequency() {
         double fref = FXOSC_FREQUENCY / PLL_reg.refDiv;
         int freq = !MAIN_reg.fReg ? FREQ_A_reg.frequency : FREQ_B_reg.frequency;
-        return fref * (freq + 8192) / 16384;
+        return fref * (freq + 8192) / (16384*1E6);
     }
 
     private class SPITicker implements Simulator.Event {
@@ -1053,7 +1063,21 @@ public class CC1000Radio implements Radio {
         Receiver(Medium m) {
             super(m, sim.getClock());
         }
-        public void nextByte(boolean lock, byte val) {
+        //cc2420 functions that have to be written by radio
+         public void setRssiValid (boolean v){
+             //do nothing
+         }
+          public boolean getRssiValid (){
+              //do nothing
+              return false;
+         }
+          public void setRSSI (double PRec){
+              //do nothing              
+          }
+          public void setBER (double BER){             
+            //do nothing
+        }
+        public byte nextByte(boolean lock, byte val) {
             if (lock) {
                 int delta = (int)(clock.getCount() - spiTick);
 
@@ -1069,12 +1093,13 @@ public class CC1000Radio implements Radio {
                     radioPrinter.println("CC1000 lock lost");
                 }
             }
+            return val;
         }
     }
 
     private class RSSIOutput implements ADC.ADCInput {
         public float getVoltage() {
-            if (receiver.isChannelClear()) {
+            if (receiver.isChannelClear(0,0)) {
                 return ADC.VBG_LEVEL;
             }
             else return 0.000f;
