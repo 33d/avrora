@@ -284,7 +284,7 @@ public class CC1000Radio implements Radio {
             resetN = Arithmetic.getBit(val, RESET_N);
 
             if (rxPd) receiver.endReceive();
-            else receiver.beginReceive();
+            else receiver.beginReceive(2.4);
 
             if (txPd) transmitter.endTransmit();
             else transmitter.beginTransmit(getPower(),getFrequency());

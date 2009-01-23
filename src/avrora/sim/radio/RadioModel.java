@@ -46,11 +46,11 @@ public class RadioModel implements Medium.Arbitrator {
             this.rho = rho;
         }
     }
-    public static final class noise{
-        public final ArrayList noise;        
+    public static final class Noise{
+        public final ArrayList Noise;        
         
-        public noise(ArrayList noise){
-            this.noise = noise;
+        public Noise(ArrayList Noise){
+            this.Noise = Noise;
         }
     } 
     public RadioModel() {        
@@ -125,11 +125,11 @@ public class RadioModel implements Medium.Arbitrator {
     }
    
     public int getNoise(int index){
-        if (Noise.sizeNoise() == 1) return Noise.getNoise(0);        
-        else {
-                index = index % Noise.sizeNoise();                
+        if (noise.sizeNoise() == 1) return noise.getNoise(0);        
+        else {            
+                index = index % noise.sizeNoise();                
         }
-        return Noise.getNoise(index);    
+        return noise.getNoise(index);    
         
     }
     

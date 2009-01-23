@@ -74,7 +74,7 @@ public class MediumTestAction extends Action {
 
         Simulator.Event recv = new Simulator.Event() {
             public void fire() {
-                r.beginReceive();
+                r.beginReceive(2.4);
             }
         };
 

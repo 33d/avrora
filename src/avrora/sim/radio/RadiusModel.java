@@ -40,19 +40,28 @@ public class RadiusModel implements Medium.Arbitrator {
         minimumDistanceSq = minDist * minDist;
         positions = new HashMap();
     }
+    
+    public int getNoise(int index){   
+        return (-90);   
+        
+    }
+        public double computeReceivedPower(Medium.Transmission t, Medium.Receiver receiver, int Milliseconds) {
+        
+        return (0);
+    }
 
-    public boolean lockTransmission(Medium.Receiver receiver, Medium.Transmission trans) {
+    public boolean lockTransmission(Medium.Receiver receiver, Medium.Transmission trans,int Milliseconds) {
         return distanceSq(trans.origin, receiver) <= maximumDistanceSq;
     }
 
-    public char mergeTransmissions(Medium.Receiver receiver, List it, long bit) {
+    public char mergeTransmissions(Medium.Receiver receiver, List it, long bit,int Milliseconds) {
         assert it.size() > 0;
         boolean one = false;
         int value = 0;
         Iterator i = it.iterator();
         while ( i.hasNext() ) {
             Medium.Transmission next = (Medium.Transmission)i.next();
-            if (lockTransmission(receiver, next)) {
+            if (lockTransmission(receiver, next, Milliseconds)) {
                 if (one) {
                     int nval = 0xff & next.getByteAtTime(bit);
                     value |= (nval << 8) ^ (value << 8); // compute corrupted bits
