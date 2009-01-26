@@ -80,10 +80,13 @@ public class PacketMonitor extends MonitorFactory {
         int packetsTransmitted;
         int bytesReceived;
         int packetsReceived;
-        int bytesCorrupted;
+        int bytesCorrupted;        
+        int packetsLostinMiddle;
         boolean matchStart;
         byte startSymbol;
         long startCycle;
+        boolean cc2420radio;
+        
 
         Mon(Simulator s) {
             simulator = s;
@@ -107,10 +110,12 @@ public class PacketMonitor extends MonitorFactory {
                 startSymbol = (byte) StringUtil.readHexValue(new StringCharacterIterator(START_SYMBOL.get()), 2);
             } else {
                 if (radio instanceof CC1000Radio) {
+                    cc2420radio = false;
                     matchStart = true;
                     startSymbol = (byte)0x33;
                 }
                 if (radio instanceof CC2420Radio) {
+                    cc2420radio = true;
                     matchStart = true;
                     startSymbol = (byte)0xA7;
                 }
@@ -134,25 +139,65 @@ public class PacketMonitor extends MonitorFactory {
             bytes = new LinkedList();
         }
 
-        public void fireAfterReceive(Medium.Receiver r, char val) {
-            if (bytes.size() == 0) startCycle = simulator.getClock().getCount();
-            if (Medium.isCorruptedByte(val)) bytesCorrupted++;
-            bytes.addLast(new Character(val));
-            bytesReceived++;
+        public void fireAfterReceive(Medium.Receiver r, char val) {            
+                if (bytes.size() == 0) startCycle = simulator.getClock().getCount();
+                if (Medium.isCorruptedByte(val)) bytesCorrupted++;                         
+                bytesReceived++;
+                bytes.addLast(new Character(val));                  
         }
+         
 
         public void fireAfterReceiveEnd(Medium.Receiver r) {
-            packetsReceived++;
-            if ( showPackets ) {
-                StringBuffer buf = renderPacket("<==== ");
-                synchronized ( Terminal.class) {
-                    Terminal.println(buf.toString());
+            if (cc2420radio){
+                Iterator b = bytes.iterator();
+                int cnt = 0;
+                //If bytes were lost in the middle of the packet do not show them
+                boolean LostBytesinPacket=false;
+                while ( b.hasNext() ) {
+                    cnt++;
+                    char c = ((Character)b.next()).charValue();
+                    switch (cnt){
+                        case 1:
+                        case 2:
+                        case 3:
+                            if (c != '\u0000') LostBytesinPacket = true;
+                            break;
+                        case 4:
+                            if (c != '\u000f') LostBytesinPacket = true;                          
+                            break;
+                        case 5:
+                            if (c != '§') LostBytesinPacket = true;                          
+                            break;
+                        case 6:                         
+                            if (c != (char)(bytes.size()-6)) LostBytesinPacket = true;                        
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                if (!LostBytesinPacket){
+                    packetsReceived++;                       
+                    if ( showPackets) {
+                        StringBuffer buf = renderPacket("<==== ");                       
+                        synchronized ( Terminal.class) {
+                            Terminal.println(buf.toString());                
+                        }
+                    }                
+                }else packetsLostinMiddle++;
+
+            }else{
+                packetsReceived++;
+                if ( showPackets ) {
+                    StringBuffer buf = renderPacket("<==== ");
+                    synchronized ( Terminal.class) {
+                        Terminal.println(buf.toString());
+                    }
                 }
             }
             bytes = new LinkedList();
-        }
+        }        
 
-        private StringBuffer renderPacket(String prefix) {
+        private StringBuffer renderPacket(String prefix) {            
             StringBuffer buf = new StringBuffer(3 * bytes.size() + 45);
             SimUtil.getIDTimeString(buf, simulator);
             Terminal.append(Terminal.COLOR_BRIGHT_CYAN, buf, prefix);
@@ -183,15 +228,15 @@ public class PacketMonitor extends MonitorFactory {
             if (!bits && Medium.isCorruptedByte(value)) {
                 // this byte was corrupted during transmission.
                 color = Terminal.COLOR_RED;
-            } else if (matchStart && cntr > 1) {
+            } else if (matchStart && cntr > 4) {
                 // should we match the start symbol?
-                if (inPreamble) {
+                if (inPreamble && cntr == 5) {
                     if (bval == startSymbol) {
                         color = Terminal.COLOR_YELLOW;
                         inPreamble = false;
                     }
-                } else {
-                    color = Terminal.COLOR_GREEN;
+                }else if (!inPreamble && cntr > 5){
+                    color = Terminal.COLOR_GREEN;                
                 }
             }
             renderByte(buf, color, value);
@@ -216,7 +261,8 @@ public class PacketMonitor extends MonitorFactory {
         public void report() {
             if (monitors != null) {
                 TermUtil.printSeparator(Terminal.MAXLINE, "Packet monitor results");
-                Terminal.printGreen("Node     sent (b/p)          recv (b/p)    corrupted (b)");
+                if (cc2420radio) Terminal.printGreen("Node     sent (b/p)          recv (b/p)    corrupted (b)   lostinMiddle(p)");
+                else Terminal.printGreen("Node     sent (b/p)          recv (b/p)    corrupted (b)");
                 Terminal.nextln();
                 TermUtil.printThinSeparator();
                 Iterator i = monitors.iterator();
@@ -231,14 +277,13 @@ public class PacketMonitor extends MonitorFactory {
                     Terminal.print(" / ");
                     Terminal.print(StringUtil.leftJustify(mon.packetsReceived, 8));
                     Terminal.print(StringUtil.rightJustify(mon.bytesCorrupted, 10));
+                    if (cc2420radio) Terminal.print(StringUtil.rightJustify(mon.packetsLostinMiddle, 8));
                     Terminal.nextln();
                 }
                 monitors = null;
-                Terminal.nextln();
-                
+                Terminal.nextln();              
             }
         }
-
     }
 
     /**
