@@ -41,6 +41,7 @@ import avrora.sim.platform.PlatformFactory;
 import avrora.sim.platform.sensors.*;
 import avrora.sim.radio.*;
 import avrora.sim.radio.Topology;
+import avrora.sim.radio.noise;
 import cck.text.StringUtil;
 import cck.util.*;
 
@@ -73,6 +74,13 @@ public class SensorSimulation extends Simulation {
             "a file that contains information about the topology of the network. " +
             "When this option is specified. the free space radio model will be used " +
             "to model radio propagation.");
+    public final Option.Bool LOSSY_MODEL = newOption("lossy-model",false,
+            "When this option is set, the radio model takes into account noise and fadings thus" +
+            "implementing in micaz platform the correlation, cca and rssi functions."); 
+    public final Option.Str NOISE = newOption("noise", "",
+            "This option can be used to specify the name of " +
+            "a file that contains a noise time trace. When this option is specified" +
+            "the indoor radio model will be used to model radio propagation.");
     public final Option.Double RANGE = newOption("radio-range", 15.0,
             "This option, when used in conjunction with the -topology option, specifies " +
             "the maximum range for radio communication between nodes. This simple " +
@@ -179,7 +187,7 @@ public class SensorSimulation extends Simulation {
                 CC1000Radio radio = (CC1000Radio)dev;
                 this.radio = radio;
                 radio.setMedium(createCC1000Medium());
-            }
+            }            
             simulator.delay(startup);
             if (topology != null) {
                 setNodePosition();
@@ -190,7 +198,11 @@ public class SensorSimulation extends Simulation {
         private Medium createCC2420Medium() {
             if (cc2420_medium == null) {
                 createRadioModel();
-                return cc2420_medium = CC2420Radio.createMedium(synchronizer, radioModel);
+                if (LOSSY_MODEL.get()){
+                    return cc2420_medium = CC2420Radio.createMedium(synchronizer, lossyModel);
+                }else{
+                    return cc2420_medium = CC2420Radio.createMedium(synchronizer, radiusModel);
+                }
             }
             return cc2420_medium;
         }
@@ -198,27 +210,40 @@ public class SensorSimulation extends Simulation {
         private Medium createCC1000Medium() {
             if (cc1000_medium == null) {
                 createRadioModel();
-                return cc1000_medium = CC1000Radio.createMedium(synchronizer, radioModel);
+                if (LOSSY_MODEL.get()){
+                    return cc1000_medium = CC1000Radio.createMedium(synchronizer, lossyModel);
+                }else{
+                    return cc1000_medium = CC1000Radio.createMedium(synchronizer, radiusModel);
+                }
             }
             return cc1000_medium;
         }
-
         private void createRadioModel() {
-            if (topology == null && !TOPOLOGY.isBlank()) {
-                try {
-                    topology = new Topology(TOPOLOGY.get());
-                    radioModel = new RadiusModel(1.0, RANGE.get());
-                } catch (IOException e) {
-                    throw Util.unexpected(e);
-                }
-            }
+           if (topology == null && !TOPOLOGY.isBlank()) {
+                 try {                    
+                    if (LOSSY_MODEL.get()){
+                        topology = new Topology(TOPOLOGY.get(),true);
+                        lossyModel = new LossyModel();
+                    }
+                    else{
+                        topology = new Topology(TOPOLOGY.get(),false);
+                        radiusModel = new RadiusModel(1.0, RANGE.get());
+                    }
+                 } catch (IOException e) {
+                     throw Util.unexpected(e);
+                 }
+           }
         }
 
+        
         private void setNodePosition() {
-            RadiusModel.Position p = topology.getPosition(id);
-            if (p != null && radio != null) {
-                radioModel.setPosition(radio, p);
-            }
+            if (LOSSY_MODEL.get()){
+                LossyModel.Position p = topology.getPosition(id);
+                if (p != null && radio != null) lossyModel.setPosition(radio, p);
+            }else{
+                RadiusModel.Position p = topology.getPositioninRadius(id);
+                if (p != null && radio != null) radiusModel.setPosition(radio, p);
+            }            
         }
 
         private void updateNodeID() {
@@ -254,14 +279,15 @@ public class SensorSimulation extends Simulation {
     }
 
     Topology topology;
-    RadiusModel radioModel;
+    noise Noise;
+    LossyModel lossyModel;
+    RadiusModel radiusModel;
     Medium cc2420_medium;
     Medium cc1000_medium;
     long stagger;
 
     public SensorSimulation() {
         super("sensor-network", HELP, null);
-
         addSection("SENSOR NETWORK SIMULATION OVERVIEW", help);
         addOptionSection("This simulation type supports simulating multiple sensor network nodes that communicate " +
                 "with each other over radios. There are options to specify how many of each type of sensor node to " +
@@ -269,7 +295,7 @@ public class SensorSimulation extends Simulation {
                 "that describes the physical layout of the sensor network. Also, each node's sensors can be " +
                 "supplied with random or replay sensor data through the \"sensor-data\" option.", options);
 
-        PLATFORM.setNewDefault("mica2");       // set the new default monitors
+        PLATFORM.setNewDefault("micaz");       // set the new default monitors
         MONITORS.setNewDefault("leds,packet"); // set the new default monitors
     }
 
@@ -312,6 +338,9 @@ public class SensorSimulation extends Simulation {
 
         // process the sensor data input option
         processSensorInput();
+        
+        //create noise time trace
+        createNoise();
     }
 
     private void createNodes(String[] args, PlatformFactory pf) throws Exception {
@@ -329,6 +358,13 @@ public class SensorSimulation extends Simulation {
                 n.startup = r + s;
             }
         }
+    }
+        private void createNoise() throws Exception {
+            if (Noise == null && !NOISE.isBlank()) {                               
+                    Noise = new noise(NOISE.get());                  
+            }else if (Noise == null && NOISE.isBlank()){
+                    Noise = new noise();
+            }                    
     }
 
     private void processSensorInput() {
@@ -383,4 +419,4 @@ public class SensorSimulation extends Simulation {
         return st;
     }
 
-}
+} 
