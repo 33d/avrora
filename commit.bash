@@ -99,9 +99,9 @@ assembleCheckinList() {
 
 echo > /tmp/commit.reason
 
-echo 'Checking for bash mode "avrora"'
-test "$BASH_MODE" = "avrora"
-checkSuccess 'OK' 'Please convert shell to avrora mode first.' 'echo'
+#echo 'Checking for bash mode "avrora"'
+#test "$BASH_MODE" = "avrora"
+#checkSuccess 'OK' 'Please convert shell to avrora mode first.' 'echo'
 
 echo 'Checking that all Java files are added to CVS...'
 cvs log $JAVA_FILES &> /tmp/commit.new
@@ -170,4 +170,4 @@ checkSuccess 'Commit completed successfully.' 'There were errors committing to C
 cat /tmp/commit.log
 
 removeOldVersions
-mv jars/$JARFILE /project/www/html/avrora/jars
+#mv jars/$JARFILE /project/www/html/avrora/jars

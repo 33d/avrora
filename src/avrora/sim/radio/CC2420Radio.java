@@ -940,7 +940,7 @@ public class CC2420Radio implements Radio {
         }
 
         public void setBER (double BER){             
-            BERlist.add(BER);           
+            BERlist.add(new Double(BER));           
         }
         public double getPER (){
             //compute average BER after SHR
