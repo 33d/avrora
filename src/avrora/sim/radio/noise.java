@@ -33,7 +33,7 @@ import java.util.*;
 
 public class noise {      
 
-    private static List<Integer> noise = new ArrayList<Integer>();  
+    private static List noise = new ArrayList();  
        
     /** Creates a new instance of Noise from file */
     public noise(String fileName) throws FileNotFoundException, IOException {
@@ -82,7 +82,7 @@ public class noise {
     }
 
     public static int getNoise(int index) {          
-        return noise.get(index);
+        return ((Integer)noise.get(index)).intValue();
     }
     public static int sizeNoise() {
         return noise.size();

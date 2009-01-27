@@ -127,7 +127,7 @@ public class CC2420Radio implements Radio {
     protected final byte[] RAMSecurityRegisters = new byte[RAMSECURITYBANK_SIZE];
     protected final ByteFIFO txFIFO = new ByteFIFO(FIFO_SIZE);
     protected final ByteFIFO rxFIFO = new ByteFIFO(FIFO_SIZE);               
-    protected List<Double> BERlist = new ArrayList<Double>();
+    protected List BERlist = new ArrayList();
 
     protected Medium medium;
     protected Transmitter transmitter;
@@ -946,7 +946,7 @@ public class CC2420Radio implements Radio {
             //compute average BER after SHR
             double Total = 0.0D;
             int size = BERlist.size();
-            for (int i = 5; i<BERlist.size(); i++) Total+=BERlist.get(i);
+            for (int i = 5; i<BERlist.size(); i++) Total+=((Double)BERlist.get(i)).doubleValue();
             BERlist.clear();
             double BER = Total/(size-5);   
             //considering i.i.s errors i compute PER
