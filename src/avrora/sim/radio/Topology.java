@@ -44,20 +44,26 @@ import java.util.*;
  * handles node positions.
  *
  * @author Olaf Landsiedel
+ * @author Rodolfo de Paz
  */
 public class Topology {
 
     //structure of the node positions
     private final ArrayList nodes;
+    //radiomodel boolean parameter
+    private final boolean lossyradiomodel;
 
     /**
      * new topology
      *
      * @param fileName file to parse for topology
+     * @param lossy boolean parameter to say which radio model is
      */
-    public Topology(String fileName) throws IOException {
+    public Topology(String fileName, boolean lossy) throws IOException {
         nodes = new ArrayList();
+        lossyradiomodel = lossy;
         parse(new BufferedReader(new FileReader(fileName)));
+
     }
 
     private void parse(BufferedReader f) throws IOException {
@@ -75,32 +81,48 @@ public class Topology {
      */
     private void parseLine(String line) {
         String nodeName = "";
-        int[] positions = new int[3];
-
+        double[] positions = new double[4];
         //check for comment
         if (!line.startsWith("#")) {
             StringTokenizer tokenizer = new StringTokenizer(line, " ");
             int count = 0;
-            while (tokenizer.hasMoreTokens() && count < 4) {
+            while (tokenizer.hasMoreTokens() && count < 5) {
                 try {
                     if (count == 0)
                         nodeName = tokenizer.nextToken();
                     else {
-                        positions[count - 1] = Integer.parseInt(tokenizer.nextToken());
+                        //positions[count - 1] = Integer.parseInt(tokenizer.nextToken());
+                        positions[count - 1] = Double.parseDouble(tokenizer.nextToken());
                     }
                     count++;
                 } catch (NoSuchElementException e) {
                     throw Util.failure("Error reading topology tokens");
                 }
             }
-            if (count == 4) {
-                //parsing of this line went well -> found 4 tokens
-                nodes.add(new RadiusModel.Position(positions[0], positions[1], positions[2]));
-            }
+            if (lossyradiomodel){
+                if (count == 4) {
+                    //found 4 tokens so we won't have obstacles (rho = 0)
+                    nodes.add(new LossyModel.Position(positions[0], positions[1], positions[2], 0.0));
+                }else if (count == 5){
+                    //found 5 tokens so density of obstacles is included in topology file
+                    nodes.add(new LossyModel.Position(positions[0], positions[1], positions[2], positions[3]));
+                }
+            }else{                         
+                if (count == 4) {
+                    //found 4 tokens 
+                    nodes.add(new RadiusModel.Position(positions[0], positions[1], positions[2]));
+                }else if (count == 5){
+                    //found 5 tokens it's an error here
+                    throw Util.failure("Error reading topology tokens");
+                }                
+            }            
         }
     }
 
-    public RadiusModel.Position getPosition(int id) {
+    public LossyModel.Position getPosition(int id) {
+        return ((LossyModel.Position)nodes.get(id));
+    }
+    public RadiusModel.Position getPositioninRadius(int id) {
         return ((RadiusModel.Position)nodes.get(id));
     }
 }
