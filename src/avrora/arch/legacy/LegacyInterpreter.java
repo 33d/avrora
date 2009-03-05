@@ -861,7 +861,7 @@ public class LegacyInterpreter extends AtmelInterpreter implements LegacyInstrVi
         int tmp_0 = extended(getRegisterWord(RZ));
         writeRegisterByte(i.r1, getFlashByte(tmp_0));
         writeRegisterWord(RZ, tmp_0 + 1);
-        if (tmp_0==0xFFFF)
+        if ((tmp_0 & 0xFFFF) == 0xFFFF)
 	    writeIORegisterByte(RAMPZ, (byte)(getIORegisterByte(RAMPZ)+1));
         cyclesConsumed += 3;
     }
