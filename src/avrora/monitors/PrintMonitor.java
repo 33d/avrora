@@ -54,25 +54,29 @@ public class PrintMonitor extends MonitorFactory {
 
     protected final Option.Str VARIABLENAME = newOption("VariableName","debugbuf1" ,
             "This option specifies the name of the variable to print");
-    protected final Option.Str LEN = newOption("Len","30" ,
+    protected final Option.Str MAX = newOption("max","30" ,
             "This option specifies the length of the variable to print");
     protected final Option.Str LOG = newOption("printlogfile", "",
             "This option specifies whether the print monitor should log changes to each " +
             "node's energy state. If this option is specified, then each node's print " +
             "statements will be written to <option>.#, where '#' represents the " +
             "node ID.");
+    protected final Option.Str BASEADDR = newOption("base", "",
+            "This option specifies the base direction of the SRAM to watch. ");
+    
     public class Monitor implements avrora.monitors.Monitor {
         public final MemPrint memprofile;        
         private final String varname = VARIABLENAME.get();             
-        private final String l = LEN.get();        
-        private int BASE;    
+        int LEN = Integer.parseInt(MAX.get());       
+        int BASE;
         protected Simulator simulator;
-        private String fileName;
+        private String fileName;        
 
         Monitor(Simulator s) {
-            this.simulator = s;
+            this.simulator = s;           
             Program p = s.getProgram();               
-            Iterator it = p.getSourceMapping().getIterator();
+            Iterator it = p.getSourceMapping().getIterator();        
+            //If you enter the variable name will look into the map file fo
             while (it.hasNext()) {
                 SourceMapping.Location tempLoc = (SourceMapping.Location)it.next();
                 //Look for the label that equals the desired variable name inside the map file
@@ -80,12 +84,13 @@ public class PrintMonitor extends MonitorFactory {
                     String st = StringUtil.toHex((long)tempLoc.vma_addr,3);
                     st = st.substring(3,6);
                     BASE = StringUtil.readHexValue(new StringCharacterIterator(st),3);
-                }                                      
-            }            
-            int MAX = Integer.parseInt(l);
+                }                                         
+            }
+            //If you enter directly the addr will look into that addr
+            if (!BASEADDR.isBlank()) BASE = Integer.parseInt(BASEADDR.get());
             if ( !LOG.isBlank() ) fileName = LOG.get() + simulator.getID();  
             else fileName = "";
-            memprofile = new MemPrint(BASE, MAX, fileName);
+            memprofile = new MemPrint(BASE, LEN, fileName);
             s.insertWatch(memprofile, BASE);                                    
         }
 
