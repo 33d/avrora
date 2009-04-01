@@ -166,7 +166,7 @@ public class PacketMonitor extends MonitorFactory {
                             if (c != '\u000f') LostBytesinPacket = true;                          
                             break;
                         case 5:
-                            if (c != '§') LostBytesinPacket = true;                          
+                            if (c != '\u00A7') LostBytesinPacket = true;                          
                             break;
                         case 6:                         
                             if (c != (char)(bytes.size()-6)) LostBytesinPacket = true;                        
