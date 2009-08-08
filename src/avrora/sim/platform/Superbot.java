@@ -34,6 +34,7 @@ package avrora.sim.platform;
 
 import avrora.core.Program;
 import avrora.sim.Simulator;
+import avrora.sim.Simulation;
 import avrora.sim.clock.ClockDomain;
 import avrora.sim.mcu.ATMega128;
 import avrora.sim.mcu.Microcontroller;
@@ -60,14 +61,14 @@ public class Superbot extends Platform {
 
 
     public static class Factory implements PlatformFactory {
-        public Platform newPlatform(int id, Program p) {
+        public Platform newPlatform(int id, Simulation sim, Program p) {
             ClockDomain cd = new ClockDomain(7372800);
             cd.newClock("external", 32768);
 
-            return new Superbot(new ATMega128(id, cd, p));
+            return new Superbot(new ATMega128(id, sim, cd, p));
         }
     }
-    
+
     /**
      * The <code>addDevices()</code> method is used to add the external (off-chip) devices to the
      * platform.
@@ -103,7 +104,7 @@ public class Superbot extends Platform {
 		LED4PinTx.enableConnect();
 		LED5PinTx.enableConnect();
 		LED6PinTx.enableConnect();
-		
+
         // receive pins
         PinWire LED1PinRx = new PinWire(sim, Terminal.COLOR_YELLOW, "LED1 Rx");
         PinWire LED2PinRx = new PinWire(sim, Terminal.COLOR_GREEN, "LED2 Rx");
@@ -133,14 +134,14 @@ public class Superbot extends Platform {
 		LED4PinRx.enableConnect();
 		LED5PinRx.enableConnect();
 		LED6PinRx.enableConnect();
-		
+
         // receive interrupt pins
         PinWire LED1PinInt = new PinWire(sim, Terminal.COLOR_YELLOW, "LED1 Int", 1+2, mcu);
         PinWire LED2PinInt = new PinWire(sim, Terminal.COLOR_GREEN, "LED2 Int", 2+2, mcu);
         PinWire LED3PinInt = new PinWire(sim, Terminal.COLOR_RED, "LED3 Int", 3+2, mcu);
-        PinWire LED4PinInt = new PinWire(sim, Terminal.COLOR_BLUE, "LED4 Int", 4+2, mcu); 
+        PinWire LED4PinInt = new PinWire(sim, Terminal.COLOR_BLUE, "LED4 Int", 4+2, mcu);
         PinWire LED5PinInt = new PinWire(sim, Terminal.COLOR_RED, "LED5 Int", 5+2, mcu);
-        PinWire LED6PinInt = new PinWire(sim, Terminal.COLOR_BLUE, "LED6 Int", 6+2, mcu); 
+        PinWire LED6PinInt = new PinWire(sim, Terminal.COLOR_BLUE, "LED6 Int", 6+2, mcu);
 
         // connect receive interrupt pins to physical pins
    		mcu.getPin("INT1").connectInput(LED1PinInt.wireInput);
@@ -166,7 +167,7 @@ public class Superbot extends Platform {
 
 		// pin management device
         pinConnect = PinConnect.pinConnect;
-         
+
         pinConnect.addSuperbotNode(mcu, LED1PinTx, LED2PinTx, LED3PinTx, LED4PinTx, LED5PinTx, LED6PinTx,
         		LED1PinRx, LED2PinRx, LED3PinRx, LED4PinRx, LED5PinRx, LED6PinRx,
 				LED1PinInt, LED2PinInt, LED3PinInt, LED4PinInt, LED5PinInt, LED6PinInt);

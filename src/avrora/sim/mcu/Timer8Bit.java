@@ -117,7 +117,7 @@ public abstract class Timer8Bit extends AtmelInternalDevice {
     }
 
     protected void compareMatch() {
-        if (devicePrinter.enabled) {
+        if (devicePrinter != null) {
             boolean enabled = TIMSK_reg.readBit(OCIEn);
             devicePrinter.println("Timer" + n + ".compareMatch (enabled: " + enabled + ')');
         }
@@ -130,7 +130,7 @@ public abstract class Timer8Bit extends AtmelInternalDevice {
     }
 
     protected void overflow() {
-        if (devicePrinter.enabled) {
+        if (devicePrinter != null) {
             boolean enabled = TIMSK_reg.readBit(TOIEn);
             devicePrinter.println("Timer" + n + ".overFlow (enabled: " + enabled + ')');
         }
@@ -304,7 +304,7 @@ public abstract class Timer8Bit extends AtmelInternalDevice {
             tickerFinish(this, ncount, ocount);
         }
     }
-    
+
     private void tickerFinish(Simulator.Event ticker, int ncount, int ocount) {
         if (!blockCompareMatch && ocount == (OCRn_reg.read() & 0xff)) {
             compareMatch();

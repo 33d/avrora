@@ -1,6 +1,6 @@
 /**
  * Created on 17.11.2004
- * 
+ *
  * Copyright (c) 2004-2005, Olaf Landsiedel, Protocol Engineering and
  * Distributed Systems, University of Tuebingen
  * All rights reserved.
@@ -17,7 +17,7 @@
  * documentation and/or other materials provided with the distribution.
  *
  * Neither the name of the Protocol Engineering and Distributed Systems
- * Group, the name of the University of Tuebingen nor the names of its 
+ * Group, the name of the University of Tuebingen nor the names of its
  * contributors may be used to endorse or promote products derived from
  * this software without specific prior written permission.
  *
@@ -40,9 +40,7 @@ package avrora.monitors;
 import avrora.sim.Simulator;
 import avrora.sim.platform.Platform;
 import avrora.sim.radio.*;
-import avrora.sim.util.SimUtil;
 import avrora.sim.output.SimPrinter;
-import avrora.syntax.Expr;
 import cck.text.*;
 import cck.util.Option;
 
@@ -80,13 +78,13 @@ public class PacketMonitor extends MonitorFactory {
         int packetsTransmitted;
         int bytesReceived;
         int packetsReceived;
-        int bytesCorrupted;        
+        int bytesCorrupted;
         int packetsLostinMiddle;
         boolean matchStart;
         byte startSymbol;
         long startCycle;
         boolean cc2420radio;
-        
+
 
         Mon(Simulator s) {
             simulator = s;
@@ -94,8 +92,7 @@ public class PacketMonitor extends MonitorFactory {
             Radio radio = (Radio)platform.getDevice("radio");
             radio.getTransmitter().insertProbe(this);
             radio.getReceiver().insertProbe(this);
-            printer = SimUtil.getPrinter(simulator, "monitor.packet");
-            printer.enabled = true;
+            printer = simulator.getPrinter();
             showPackets = PACKETS.get();
             bytes = new LinkedList();
             bits = BITS.get();
@@ -131,21 +128,18 @@ public class PacketMonitor extends MonitorFactory {
         public void fireBeforeTransmitEnd(Medium.Transmitter t) {
             packetsTransmitted++;
             if ( showPackets ) {
-                StringBuffer buf = renderPacket("----> ");
-                synchronized ( Terminal.class) {
-                    Terminal.println(buf.toString());
-                }
+                printer.printBuffer(renderPacket("----> "));
             }
             bytes = new LinkedList();
         }
 
-        public void fireAfterReceive(Medium.Receiver r, char val) {            
+        public void fireAfterReceive(Medium.Receiver r, char val) {
                 if (bytes.size() == 0) startCycle = simulator.getClock().getCount();
-                if (Medium.isCorruptedByte(val)) bytesCorrupted++;                         
+                if (Medium.isCorruptedByte(val)) bytesCorrupted++;
                 bytesReceived++;
-                bytes.addLast(new Character(val));                  
+                bytes.addLast(new Character(val));
         }
-         
+
 
         public void fireAfterReceiveEnd(Medium.Receiver r) {
             if (cc2420radio){
@@ -163,43 +157,36 @@ public class PacketMonitor extends MonitorFactory {
                             if (c != '\u0000') LostBytesinPacket = true;
                             break;
                         case 4:
-                            if (c != '\u000f') LostBytesinPacket = true;                          
+                            if (c != '\u000f') LostBytesinPacket = true;
                             break;
                         case 5:
-                            if (c != '\u00A7') LostBytesinPacket = true;                          
+                            if (c != '\u00A7') LostBytesinPacket = true;
                             break;
-                        case 6:                         
-                            if (c != (char)(bytes.size()-6)) LostBytesinPacket = true;                        
+                        case 6:
+                            if (c != (char)(bytes.size()-6)) LostBytesinPacket = true;
                             break;
                         default:
                             break;
                     }
                 }
                 if (!LostBytesinPacket){
-                    packetsReceived++;                       
+                    packetsReceived++;
                     if ( showPackets) {
-                        StringBuffer buf = renderPacket("<==== ");                       
-                        synchronized ( Terminal.class) {
-                            Terminal.println(buf.toString());                
-                        }
-                    }                
+                        printer.printBuffer(renderPacket("<==== "));
+                    }
                 }else packetsLostinMiddle++;
 
             }else{
                 packetsReceived++;
                 if ( showPackets ) {
-                    StringBuffer buf = renderPacket("<==== ");
-                    synchronized ( Terminal.class) {
-                        Terminal.println(buf.toString());
-                    }
+                    printer.printBuffer(renderPacket("<==== "));
                 }
             }
             bytes = new LinkedList();
-        }        
+        }
 
-        private StringBuffer renderPacket(String prefix) {            
-            StringBuffer buf = new StringBuffer(3 * bytes.size() + 45);
-            SimUtil.getIDTimeString(buf, simulator);
+        private StringBuffer renderPacket(String prefix) {
+            StringBuffer buf = printer.getBuffer(3 * bytes.size() + 15);
             Terminal.append(Terminal.COLOR_BRIGHT_CYAN, buf, prefix);
             Iterator i = bytes.iterator();
             int cntr = 0;
@@ -236,7 +223,7 @@ public class PacketMonitor extends MonitorFactory {
                         inPreamble = false;
                     }
                 }else if (!inPreamble && cntr > 5){
-                    color = Terminal.COLOR_GREEN;                
+                    color = Terminal.COLOR_GREEN;
                 }
             }
             renderByte(buf, color, value);
@@ -281,7 +268,7 @@ public class PacketMonitor extends MonitorFactory {
                     Terminal.nextln();
                 }
                 monitors = null;
-                Terminal.nextln();              
+                Terminal.nextln();
             }
         }
     }

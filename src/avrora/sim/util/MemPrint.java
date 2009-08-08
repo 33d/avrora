@@ -37,7 +37,6 @@ import cck.text.StringUtil;
 import cck.text.Terminal;
 
 import java.io.*;
-import java.util.regex.*;
 
 /**
  * <code>MemPrint</code> is a simple utility that allows the simulated
@@ -51,7 +50,7 @@ public class MemPrint extends Simulator.Watch.Empty {
     int base;
     int max;
     String log;
-    
+
     public MemPrint(int b, int m, String l) {
         base = b;
         max = m;
@@ -70,98 +69,81 @@ public class MemPrint extends Simulator.Watch.Empty {
             if (data_addr != base) {
                 Terminal.printRed("Unexpected interception by printer!");
             }
-            
+
             Simulator sim = state.getSimulator();
-            AtmelInterpreter a = (AtmelInterpreter) sim.getInterpreter();            
-            StringBuffer buf = new StringBuffer();      
-            StringBuffer fil = new StringBuffer();      
-            SimUtil.getIDTimeString(buf, sim);            
+            AtmelInterpreter a = (AtmelInterpreter) sim.getInterpreter();
+            StringBuffer buf = new StringBuffer();
+            StringBuffer fil = new StringBuffer();
+            SimUtil.getIDTimeString(buf, sim);
             boolean ret=false;//indicates that it is a return line
             switch (value) {
                 case 0x1://for 2byte hexadecimals
-                case 0x3://for 2byte integers                  
+                case 0x3://for 2byte integers
                     int l = a.getDataByte(base + 1);
                     int h = a.getDataByte(base + 2);
-                    int v = ((h & 0xff) << 8) + (l & 0xff);                                                                    
-                    if (value == 0x1) {                        
-                        fil.append(StringUtil.toHex(v, 4));   
+                    int v = ((h & 0xff) << 8) + (l & 0xff);
+                    if (value == 0x1) {
+                        fil.append(StringUtil.toHex(v, 4));
                         buf.append(StringUtil.toHex(v, 4));
                         break;
                     }
                     if (value == 0x3) {
-                        fil.append(v);                        
-                        buf.append(v);                        
+                        fil.append(v);
+                        buf.append(v);
                         break;
-                    }     
+                    }
                     break;
                 case 0x2://for strings
                     for (int i = 0; i <= max; i++) {
-                        byte b = a.getDataByte(base + i + 1);   
-                        if (b == 0) break;//break if end of string  
+                        byte b = a.getDataByte(base + i + 1);
+                        if (b == 0) break;//break if end of string
                         fil.append(String.valueOf((char) b));
-                        if (b != 10) buf.append(String.valueOf((char) b));//not return char  
-                        else if (i == 0) ret = true;//return line                        
-                    }                  
+                        if (b != 10) buf.append(String.valueOf((char) b));//not return char
+                        else if (i == 0) ret = true;//return line
+                    }
                     break;
                 case 0x4://for 4byte hexadecimals
                 case 0x5://for 4byte integers
-                    long r = ((a.getDataByte(base + 4) & 0xff) <<24) + ((a.getDataByte(base + 3) & 0xff) <<16)+((a.getDataByte(base + 2) & 0xff) << 8) + (a.getDataByte(base + 1) & 0xff) & 0xffffffff;                   
-                    if (value == 0x4) {                        
-                        fil.append(StringUtil.toHex(r, 8));                                                                        
-                        buf.append(StringUtil.toHex(r, 8));       
+                    long r = ((a.getDataByte(base + 4) & 0xff) <<24) + ((a.getDataByte(base + 3) & 0xff) <<16)+((a.getDataByte(base + 2) & 0xff) << 8) + (a.getDataByte(base + 1) & 0xff) & 0xffffffff;
+                    if (value == 0x4) {
+                        fil.append(StringUtil.toHex(r, 8));
+                        buf.append(StringUtil.toHex(r, 8));
                         break;
                     }
                     if (value == 0x5) {
-                        fil.append(r);                        
-                        buf.append(r);                        
+                        fil.append(r);
+                        buf.append(r);
                         break;
-                    }  
+                    }
                     break;
-                default://for already formatted variables (i.e. TinyOS printf)                   
+                default://for already formatted variables (i.e. TinyOS printf)
                     for (int i = 0; i <= max; i++) {
                         byte b = a.getDataByte(base + i + 1);
-                        if (b == 0) break;//break if end of string 
-                        fil.append(String.valueOf((char) b));  
-                        if (b != 10) buf.append(String.valueOf((char) b));//not return char  
-                        else if (i == 0) ret = true;//return line                         
+                        if (b == 0) break;//break if end of string
+                        fil.append(String.valueOf((char) b));
+                        if (b != 10) buf.append(String.valueOf((char) b));//not return char
+                        else if (i == 0) ret = true;//return line
                     }
-                    break;                 
+                    break;
             }
-            
-            synchronized ( Terminal.class) {                                       
-                    if (!ret & fil.length() != 0) Terminal.println(buf.toString());//print in screen if not return line and something to print                  
-                    if (!log.equals("")) PrintToFile(fil.toString());//print in file                                                
-                }             
+
+            synchronized ( Terminal.class) {
+                    if (!ret & fil.length() != 0) Terminal.println(buf.toString());//print in screen if not return line and something to print
+                    if (!log.equals("")) printToFile(fil.toString());//print in file
+                }
     }
      /**
      * The <code>PrintToFile</code> method prints to a file the character sent to it
-     * @param b character to print  
+     * @param str string to print
      */
-    public void PrintToFile(String Str){
+    public void printToFile(String str){
         try{
             BufferedWriter out = new BufferedWriter( new FileWriter(log,true));
             //Str = ControlChars(Str);
-            out.write(Str);           
-            out.close();     
+            out.write(str);
+            out.close();
         }catch (Exception e){//Catch exception if any
             System.err.println("Error: " + e.getMessage());
         }
-    }
-   /**
-     * The <code>ControlChars</code> method removes control chars from a string
-     * @param Strin string to parse  
-     */
-    public String ControlChars(String Strin){
-        // The pattern matches control characters
-        Pattern p = Pattern.compile("{cntrl}");
-        Matcher m = p.matcher("");
-        String aLine = null;
-        String result= null;
-        while((aLine = Strin) != null) {
-            m.reset(aLine);
-            //Replaces control characters with an empty string.
-            result = m.replaceAll("");          
-       }
-       return result;
     }
 }

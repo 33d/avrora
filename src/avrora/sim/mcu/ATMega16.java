@@ -48,7 +48,7 @@ import java.util.HashMap;
  * @author Ben L. Titzer
  * @author Bastian Schlich
  * @author John F. Schommer
- * 
+ *
  */
 public class ATMega16 extends ATMegaFamily {
 
@@ -258,19 +258,19 @@ public class ATMega16 extends ATMegaFamily {
          * particular program. It will construct an instance of the <code>Simulator</code> class that has all the
          * properties of this hardware device and has been initialized with the specified program.
          *
-         * @param p the program to load onto the microcontroller
-         * @return a <code>Microcontroller</code> instance that represents the specific hardware device with the
+         * @param sim
+         *@param p the program to load onto the microcontroller @return a <code>Microcontroller</code> instance that represents the specific hardware device with the
          *         program loaded onto it
          */
-        public Microcontroller newMicrocontroller(int id, ClockDomain cd, Program p) {
-            return new ATMega16(id, cd, p);
+        public Microcontroller newMicrocontroller(int id, Simulation sim, ClockDomain cd, Program p) {
+            return new ATMega16(id, sim, cd, p);
         }
 
     }
 
-    public ATMega16(int id, ClockDomain cd, Program p) {
+    public ATMega16(int id, Simulation sim, ClockDomain cd, Program p) {
         super(cd, props, new FiniteStateMachine(cd.getMainClock(), MODE_ACTIVE, idleModeNames, transitionTimeMatrix));
-        simulator = new Simulator(id, LegacyInterpreter.FACTORY, this, p);
+        simulator = sim.createSimulator(id, LegacyInterpreter.FACTORY, this, p);
         interpreter = (AtmelInterpreter)simulator.getInterpreter();
         MCUCR_reg = getIOReg("MCUCR");
         installPins();

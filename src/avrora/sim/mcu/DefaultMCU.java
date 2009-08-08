@@ -40,7 +40,6 @@ import avrora.sim.output.SimPrinter;
 import avrora.sim.clock.Clock;
 import avrora.sim.clock.ClockDomain;
 import avrora.sim.platform.Platform;
-import avrora.sim.util.SimUtil;
 
 /**
  * @author Ben L. Titzer
@@ -54,6 +53,7 @@ public abstract class DefaultMCU implements Microcontroller {
     protected SimPrinter pinPrinter;
     protected final ClockDomain clockDomain;
     protected final FiniteStateMachine sleepState;
+    private boolean pinPrinterInit;
 
     protected DefaultMCU(ClockDomain cd, int np, RegisterSet regs, FiniteStateMachine sleep) {
         clockDomain = cd;
@@ -190,8 +190,8 @@ public abstract class DefaultMCU implements Microcontroller {
         }
 
         private void printRead(boolean result) {
-            if (pinPrinter == null) pinPrinter = SimUtil.getPrinter(simulator, "mcu.pin");
-            if (pinPrinter.enabled) {
+            if (pinPrinter == null) pinPrinter = simulator.getPrinter("mcu.pin");
+            if (pinPrinter != null) {
                 String dir = getDirection();
                 pinPrinter.println("READ PIN: " + number + ' ' + dir + "<- " + result);
             }
@@ -217,8 +217,11 @@ public abstract class DefaultMCU implements Microcontroller {
         }
 
         private void printWrite(boolean value) {
-            if (pinPrinter == null) pinPrinter = SimUtil.getPrinter(simulator, "mcu.pin");
-            if (pinPrinter.enabled) {
+            if (pinPrinterInit) {
+                pinPrinter = simulator.getPrinter("mcu.pin");
+                pinPrinterInit = true;
+            }
+            if (pinPrinter != null) {
                 String dir = getDirection();
                 pinPrinter.println("WRITE PIN: " + number + ' ' + dir + "-> " + value);
             }

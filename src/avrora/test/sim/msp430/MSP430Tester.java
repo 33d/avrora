@@ -39,6 +39,7 @@ import avrora.arch.AbstractArchitecture;
 import avrora.arch.msp430.MSP430Architecture;
 import avrora.core.Program;
 import avrora.sim.Simulator;
+import avrora.sim.types.SingleSimulation;
 import avrora.sim.platform.Platform;
 import avrora.test.sim.StateAccessor;
 import avrora.test.sim.Tester;
@@ -48,7 +49,7 @@ import avrora.test.sim.Tester;
  */
 public class MSP430Tester extends Tester {
     public Simulator newSimulator(Program p) {
-        Platform platform = Defaults.getPlatform("telos").newPlatform(0, p);
+        Platform platform = Defaults.getPlatform("telos").newPlatform(0, new SingleSimulation(), p);
         return platform.getMicrocontroller().getSimulator();
     }
     public AbstractArchitecture getArchitecture() {

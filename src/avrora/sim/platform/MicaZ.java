@@ -34,6 +34,7 @@ package avrora.sim.platform;
 
 import avrora.core.Program;
 import avrora.sim.Simulator;
+import avrora.sim.Simulation;
 import avrora.sim.clock.ClockDomain;
 import avrora.sim.mcu.*;
 import avrora.sim.platform.sensors.LightSensor;
@@ -59,14 +60,14 @@ public class MicaZ extends Platform {
          * The <code>newPlatform()</code> method is a factory method used to create new instances of the
          * <code>Mica2</code> class.
          * @param id the integer ID of the node
-         * @param p the program to load onto the node
-         * @return a new instance of the <code>Mica2</code> platform
+         * @param sim the simulation
+         * @param p the program to load onto the node @return a new instance of the <code>Mica2</code> platform
          */
-        public Platform newPlatform(int id, Program p) {
+        public Platform newPlatform(int id, Simulation sim, Program p) {
             ClockDomain cd = new ClockDomain(MAIN_HZ);
             cd.newClock("external", 32768);
 
-            return new MicaZ(new ATMega128(id, cd, p));
+            return new MicaZ(new ATMega128(id, sim, cd, p));
         }
     }
 

@@ -389,7 +389,7 @@ public class Defaults {
         ClockDomain cd = new ClockDomain(hz);
         cd.newClock("external", exthz);
 
-        return f.newMicrocontroller(id, cd, p).getSimulator();
+        return f.newMicrocontroller(id, new SingleSimulation(), cd, p).getSimulator();
     }
 
     public static class AutoProgramReader extends ProgramReader {

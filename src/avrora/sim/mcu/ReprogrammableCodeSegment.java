@@ -36,7 +36,6 @@ import avrora.arch.legacy.*;
 import avrora.core.Program;
 import avrora.sim.*;
 import avrora.sim.clock.MainClock;
-import avrora.sim.util.SimUtil;
 import avrora.sim.output.SimPrinter;
 import cck.text.StringUtil;
 import cck.util.Arithmetic;
@@ -129,7 +128,7 @@ public class ReprogrammableCodeSegment extends CodeSegment {
 
         class ResetEvent implements Simulator.Event {
             public void fire() {
-                if ( flashPrinter.enabled )
+                if ( flashPrinter != null )
                     flashPrinter.println("FLASH: write to SPMCSR timed out after 4 cycles");
                 reset();
             }
@@ -222,7 +221,7 @@ public class ReprogrammableCodeSegment extends CodeSegment {
         ERASE_CYCLES = (int)((mainClock.getHZ() * ERASE_MS_MAX / 1000));
         WRITE_CYCLES = (int)((mainClock.getHZ() * WRITE_MS_MAX / 1000));
 
-        flashPrinter = SimUtil.getPrinter(bi.getSimulator(), "atmel.flash");
+        flashPrinter = bi.getSimulator().getPrinter("atmel.flash");
     }
 
     /**
@@ -243,23 +242,23 @@ public class ReprogrammableCodeSegment extends CodeSegment {
         int state = SPMCSR.getState();
         switch (state) {
             case STATE_PGERASE:
-                if (flashPrinter.enabled) flashPrinter.println("FLASH: page erase of page " + pagenum);
+                if (flashPrinter != null) flashPrinter.println("FLASH: page erase of page " + pagenum);
                 pageErase(pagenum, pageoffset);
                 break;
             case STATE_RWWSRE:
-                if (flashPrinter.enabled) flashPrinter.println("FLASH: reset RWW section ");
+                if (flashPrinter != null) flashPrinter.println("FLASH: reset RWW section ");
                 resetRWW();
                 break;
             case STATE_BLBSET:
-                if (flashPrinter.enabled) flashPrinter.println("FLASH: boot lock bits set");
+                if (flashPrinter != null) flashPrinter.println("FLASH: boot lock bits set");
                 mainClock.removeEvent(SPMCSR.reset);
                 break;
             case STATE_FILL:
-                if (flashPrinter.enabled) flashPrinter.println("FLASH: fill buffer @ " + pageoffset);
+                if (flashPrinter != null) flashPrinter.println("FLASH: fill buffer @ " + pageoffset);
                 fillBuffer(pagenum, pageoffset);
                 break;
             case STATE_PGWRITE:
-                if (flashPrinter.enabled) flashPrinter.println("FLASH: page write to page " + pagenum);
+                if (flashPrinter != null) flashPrinter.println("FLASH: page write to page " + pagenum);
                 pageWrite(pagenum, pageoffset);
                 break;
             default:
@@ -312,7 +311,7 @@ public class ReprogrammableCodeSegment extends CodeSegment {
 
         public void fire() {
             // erase the page
-            if ( flashPrinter.enabled )
+            if ( flashPrinter != null )
                 flashPrinter.println("FLASH: page erase completed for page "+pagenum);
             int size = bufferSize();
             int addr = pagenum * size;
@@ -343,7 +342,7 @@ public class ReprogrammableCodeSegment extends CodeSegment {
 
         public void fire() {
             // write the page
-            if ( flashPrinter.enabled )
+            if ( flashPrinter != null )
                 flashPrinter.println("FLASH: page write completed for page "+pagenum);
             int size = bufferSize();
             int addr = pagenum * size;

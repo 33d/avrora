@@ -110,7 +110,7 @@ public class EEPROM extends AtmelInternalDevice {
         for (int addr = 0; addr < contents.length; addr++) {
             EEPROM_data[addr] = contents[addr];
         }
-        if (devicePrinter.enabled) devicePrinter.println("EEPROM: content set");
+        if (devicePrinter != null) devicePrinter.println("EEPROM: content set");
     }
 
     public byte[] getContent() {
@@ -148,16 +148,16 @@ public class EEPROM extends AtmelInternalDevice {
         public void decode() {
             // TODO: move these flags to boolean views (and store old register value)
             if (newTrue(readEnable, readEnable = _eere.getValue())) {
-                if (devicePrinter.enabled) devicePrinter.println("EEPROM: EERE flagged");
+                if (devicePrinter != null) devicePrinter.println("EEPROM: EERE flagged");
                 readEnableWritten = true;
             }
             if (newTrue(writeEnable, writeEnable = _eewe.getValue())) {
-                if (devicePrinter.enabled) devicePrinter.println("EEPROM: EEWE flagged");
+                if (devicePrinter != null) devicePrinter.println("EEPROM: EEWE flagged");
                 writeEnableWritten = true;
             }
             if (newTrue(masterWriteEnable, masterWriteEnable = _eemwe.getValue())) {
                 // EEMWE has been written to. reset write count
-                if (devicePrinter.enabled) devicePrinter.println("EEPROM: reset write count to 4");
+                if (devicePrinter != null) devicePrinter.println("EEPROM: reset write count to 4");
                 writeCount = 4;
             }
             interpreter.setEnabled(EEPROM_INTERRUPT, _eerie.getValue());
@@ -167,7 +167,7 @@ public class EEPROM extends AtmelInternalDevice {
 
         public void write(byte val) {
             value = (byte)(0xf & val);
-            if (devicePrinter.enabled) {
+            if (devicePrinter != null) {
                 devicePrinter.println("EEPROM: EECR written to, val = " + StringUtil.toBin(value, 4));
             }
             decode();
@@ -197,7 +197,7 @@ public class EEPROM extends AtmelInternalDevice {
 
         public void fire() {
 
-            if (devicePrinter.enabled) {
+            if (devicePrinter != null) {
                 devicePrinter.println("Tick : " + writeCount);
             }
 
@@ -210,7 +210,7 @@ public class EEPROM extends AtmelInternalDevice {
 
                 if (writeEnableWritten) {
                     // TODO: disallow EEPROM access during Flash write
-                    if (devicePrinter.enabled)
+                    if (devicePrinter != null)
                         devicePrinter.println("EEPROM: " + EEDR_reg.read() + " written to " + address);
                     EEPROM_data[address] = EEDR_reg.read();
                     // EEPROM write takes 8.5ms
@@ -223,7 +223,7 @@ public class EEPROM extends AtmelInternalDevice {
             // read not allowed while write is in progress
             if (readEnableWritten && !writeEnable) {
                 // read
-                if (devicePrinter.enabled)
+                if (devicePrinter != null)
                     devicePrinter.println("EEPROM: " + EEPROM_data[address] + " read from " + address);
                 EEDR_reg.write(EEPROM_data[address]);
                 // reset EERE
@@ -238,7 +238,7 @@ public class EEPROM extends AtmelInternalDevice {
 
             if (writeCount == 0) {
                 // clear EEMWE
-                if (devicePrinter.enabled) devicePrinter.println("EEPROM: write count hit 0, clearing EEMWE");
+                if (devicePrinter != null) devicePrinter.println("EEPROM: write count hit 0, clearing EEMWE");
                 writeCount--;
                 EECR_reg.resetEEMWE();
             }
@@ -250,7 +250,7 @@ public class EEPROM extends AtmelInternalDevice {
     protected class EEPROMWriteFinishedEvent implements Simulator.Event {
 
         public void fire() {
-            if (devicePrinter.enabled) devicePrinter.println("EEPROM: write finished, clearing EEWE");
+            if (devicePrinter != null) devicePrinter.println("EEPROM: write finished, clearing EEWE");
             EECR_reg.resetEEWE();
         }
     }

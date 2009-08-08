@@ -139,7 +139,7 @@ public class RegisterUtil {
         public int getWidth() {
             return width;
         }
-        
+
         public int getValue() {
             return (reg.getValue() & mask) >> low;
         }
@@ -299,7 +299,7 @@ public class RegisterUtil {
     }
 
     public static void instrumentRegister(SimPrinter sp, Register reg, String name) {
-        if ( sp.enabled ) reg.addWatch(new RegisterPrinter(sp, name));
+        if (sp != null) reg.addWatch(new RegisterPrinter(sp, name));
     }
 
     public static class ConstantBehavior extends VolatileBehavior {

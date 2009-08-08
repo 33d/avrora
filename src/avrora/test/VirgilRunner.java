@@ -41,9 +41,10 @@ import avrora.sim.platform.DefaultPlatform;
 import avrora.sim.mcu.MicrocontrollerFactory;
 import avrora.sim.Simulator;
 import avrora.sim.AtmelInterpreter;
+import avrora.sim.Simulation;
+import avrora.sim.types.SingleSimulation;
 import avrora.Defaults;
 import cck.util.Arithmetic;
-import cck.util.Util;
 import cck.text.Terminal;
 
 /**
@@ -84,7 +85,7 @@ public class VirgilRunner {
 
     public int run(int staddr, int ioaddr, int input) {
         // create the node
-        Platform p = factory.newPlatform(0, program);
+        Platform p = factory.newPlatform(0, new SingleSimulation(), program);
         Simulator sim = p.getMicrocontroller().getSimulator();
         AtmelInterpreter inter = (AtmelInterpreter) sim.getInterpreter();
 

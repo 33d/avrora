@@ -132,7 +132,7 @@ public abstract class ATMegaTimer extends AtmelInternalDevice {
     private void resetPeriod(int nPeriod) {
         if (nPeriod == 0) {
             if (timerEnabled) {
-                if (devicePrinter.enabled) devicePrinter.println(name + " disabled");
+                if (devicePrinter != null) devicePrinter.println(name + " disabled");
                 timerClock.removeEvent(mode);
                 timerEnabled = false;
             }
@@ -141,7 +141,7 @@ public abstract class ATMegaTimer extends AtmelInternalDevice {
         if (timerEnabled) {
             timerClock.removeEvent(mode);
         }
-        if (devicePrinter.enabled)
+        if (devicePrinter != null)
             devicePrinter.println(name + " enabled: period = " + nPeriod + " mode = " + WGMn.value);
         period = nPeriod;
         timerEnabled = true;
@@ -178,7 +178,7 @@ public abstract class ATMegaTimer extends AtmelInternalDevice {
      * Sets the overflow flag (TOVn) for this timer.
      */
     protected void signalOverflow() {
-        if (devicePrinter.enabled) {
+        if (devicePrinter != null) {
             devicePrinter.println(name + ".overFlow (interrupts enabled: " + TOIEn.value + ')');
         }
         TOVn.flag();
@@ -325,7 +325,7 @@ public abstract class ATMegaTimer extends AtmelInternalDevice {
          */
         public void fire() {
             int value = getCounter();
-            if (devicePrinter.enabled) {
+            if (devicePrinter != null) {
                 devicePrinter.println(name + " [" + getCounterName() + " = " + value);
                 Iterator i = comparators.values().iterator();
                 for (Comparator c = (Comparator)i.next(); c != null; c = (Comparator)i.next()) {

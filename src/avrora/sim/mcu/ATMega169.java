@@ -41,16 +41,13 @@ import java.util.HashMap;
 import avrora.arch.avr.AVRProperties;
 import avrora.arch.legacy.LegacyInterpreter;
 import avrora.core.Program;
-import avrora.sim.ActiveRegister;
-import avrora.sim.AtmelInterpreter;
-import avrora.sim.FiniteStateMachine;
-import avrora.sim.Simulator;
+import avrora.sim.*;
 import avrora.sim.clock.ClockDomain;
 import cck.util.Arithmetic;
 
 /**
- * The <code>ATMega169</code> class represents the ATMega169 microcontroller 
- * from Atmel. This microcontroller has 16Kb code, 1KB SRAM, 512 Byte EEPROM, 
+ * The <code>ATMega169</code> class represents the ATMega169 microcontroller
+ * from Atmel. This microcontroller has 16Kb code, 1KB SRAM, 512 Byte EEPROM,
  * LCD driver, and a host of internal devices such as ADC, SPI, and timers.
  *
  * @author Anttu Koski
@@ -95,14 +92,14 @@ public class ATMega169 extends ATMegaFamilyNew {
 
     protected final ActiveRegister MCUCR_reg;
 
-    private static final int[][] transitionTimeMatrix  = 
-    	FiniteStateMachine.buildBimodalTTM(idleModeNames.length, 0, 
+    private static final int[][] transitionTimeMatrix  =
+    	FiniteStateMachine.buildBimodalTTM(idleModeNames.length, 0,
     			wakeupTimes, new int[wakeupTimes.length]);
 
 
     /**
      * The <code>props</code> field stores a static reference to a properties
-     * object shared by all of the instances of this microcontroller. 
+     * object shared by all of the instances of this microcontroller.
      * This object stores the IO register size, SRAM size, pin assignments, etc.
      */
     public static final AVRProperties props;
@@ -177,7 +174,7 @@ public class ATMega169 extends ATMegaFamilyNew {
         addPin(pinAssignments, 62, "AREF");
         addPin(pinAssignments, 63, "GND.3");
         addPin(pinAssignments, 64, "AVCC");
-        
+
         // extended IO registers
         rl.addIOReg("LCDDR18", 0xDE, ".......,SEG324");
         rl.addIOReg("LCDDR17", 0xDD, "SEG32[3:0],SEG31[9:6]");
@@ -240,7 +237,7 @@ public class ATMega169 extends ATMegaFamilyNew {
         rl.addIOReg("PRR", 0x44, "...,PRLCD,PRTIM1,PRSPI,PRUSART0,PRADC");
         rl.addIOReg("CLKPR", 0x41, "CLKPCE,...,CLKPS[3:0]");
         rl.addIOReg("WDTCR", 0x40, "...,WDCE,WDE,WDP[2:0]");
-        
+
         // lower 64 IO registers
         rl.addIOReg("SREG", 0x3F);
         rl.addIOReg("SPH", 0x3E);
@@ -336,19 +333,19 @@ public class ATMega169 extends ATMegaFamilyNew {
          * particular program. It will construct an instance of the <code>Simulator</code> class that has all the
          * properties of this hardware device and has been initialized with the specified program.
          *
-         * @param p the program to load onto the microcontroller
-         * @return a <code>Microcontroller</code> instance that represents the specific hardware device with the
+         * @param sim the simulation
+         * @param p the program to load onto the microcontroller @return a <code>Microcontroller</code> instance that represents the specific hardware device with the
          *         program loaded onto it
          */
-        public Microcontroller newMicrocontroller(int id, ClockDomain cd, Program p) {
-            return new ATMega169(id, cd, p);
+        public Microcontroller newMicrocontroller(int id, Simulation sim, ClockDomain cd, Program p) {
+            return new ATMega169(id, sim, cd, p);
         }
 
     }
 
-    public ATMega169(int id, ClockDomain cd, Program p) {
+    public ATMega169(int id, Simulation sim, ClockDomain cd, Program p) {
         super(cd, props, new FiniteStateMachine(cd.getMainClock(), MODE_ACTIVE, idleModeNames, transitionTimeMatrix));
-        simulator = new Simulator(id, LegacyInterpreter.FACTORY, this, p);
+        simulator = sim.createSimulator(id, LegacyInterpreter.FACTORY, this, p);
         interpreter = (AtmelInterpreter)simulator.getInterpreter();
         MCUCR_reg = getIOReg("MCUCR");
         installPins();
@@ -368,7 +365,7 @@ public class ATMega169 extends ATMegaFamilyNew {
 
     protected FlagRegister TIFR2_reg;
     protected MaskRegister TIMSK2_reg;
-    
+
     protected void installDevices() {
         // set up the external interrupt mask and flag registers and interrupt range
         int[] EIFR_mapping = {2, -1, -1, -1, -1, -1, 4, 3};
@@ -377,29 +374,29 @@ public class ATMega169 extends ATMegaFamilyNew {
         int[] TIFR0_mapping = {12, 11, -1, -1, -1, -1, -1, -1 };
         int[] TIFR1_mapping = {10, 8, 9, -1, -1, 7, -1, -1 };
         int[] TIFR2_mapping = {6, 5, -1, -1, -1, -1, -1, -1 };
-        
+
         // set up the timer mask and flag registers and interrupt range
-        TIFR0_reg = new FlagRegister(interpreter, TIFR0_mapping); 
+        TIFR0_reg = new FlagRegister(interpreter, TIFR0_mapping);
         TIMSK0_reg = new MaskRegister(interpreter, TIFR0_mapping);
-        TIFR1_reg = new FlagRegister(interpreter, TIFR1_mapping); 
+        TIFR1_reg = new FlagRegister(interpreter, TIFR1_mapping);
         TIMSK1_reg = new MaskRegister(interpreter, TIFR1_mapping);
-        TIFR2_reg = new FlagRegister(interpreter, TIFR2_mapping); 
+        TIFR2_reg = new FlagRegister(interpreter, TIFR2_mapping);
         TIMSK2_reg = new MaskRegister(interpreter, TIFR2_mapping);
-        
+
         installIOReg("TIFR0", TIFR0_reg);
         installIOReg("TIFR1", TIFR1_reg);
         installIOReg("TIFR2", TIFR2_reg);
         installIOReg("TIMSK0", TIMSK0_reg);
         installIOReg("TIMSK1", TIMSK1_reg);
         installIOReg("TIMSK2", TIMSK2_reg);
-        
+
         //int[] ETIFR_mapping = {25, 29, 30, 28, 27, 26, -1, -1};
         //ETIFR_reg = new FlagRegister(interpreter, ETIFR_mapping);
         //ETIMSK_reg = new MaskRegister(interpreter, ETIFR_mapping);
 
         //installIOReg("ETIMSK", ETIMSK_reg);
         //installIOReg("ETIFR", ETIFR_reg);
-        
+
         //addDevice(new Timer0());
         //addDevice(new Timer1(3));
         //addDevice(new Timer2());

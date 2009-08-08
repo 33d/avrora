@@ -34,6 +34,9 @@
 package avrora.monitors;
 
 import cck.util.Util;
+import cck.text.Terminal;
+import avrora.sim.output.SimPrinter;
+import avrora.core.SourceMapping;
 
 /**
  * The <code>CallStack</code> class implements a monitor that maintains
@@ -111,5 +114,17 @@ public class CallStack implements CallTrace.Monitor {
 
     public byte getInterrupt(int indx) {
         return (byte)((stack[indx] >> 48) & 0xffffff);
+    }
+
+    public void printStack(SimPrinter printer, SourceMapping sourceMap) {
+        int depth = getDepth();
+        for (int cntr = depth - 1; cntr >= 0; cntr--) {
+            StringBuffer buf = printer.getBuffer();
+            buf.append("      @ ");
+            int inum = getInterrupt(cntr);
+            if ( inum >= 0 ) Terminal.append(Terminal.COLOR_RED, buf, "#"+inum + ' ');
+            Terminal.append(Terminal.COLOR_GREEN, buf, sourceMap.getName(getTarget(cntr)));
+            printer.printBuffer(buf);
+        }
     }
 }

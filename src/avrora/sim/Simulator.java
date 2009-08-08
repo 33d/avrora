@@ -37,6 +37,7 @@ import avrora.core.Program;
 import avrora.sim.clock.MainClock;
 import avrora.sim.mcu.Microcontroller;
 import avrora.sim.output.EventBuffer;
+import avrora.sim.output.SimPrinter;
 
 /**
  * The <code>Simulator</code> class implements a full processor simulator for the AVR instruction set. It is
@@ -78,6 +79,11 @@ public class Simulator {
     protected final int id;
 
     /**
+     * The simulation that this node is a part of.
+     */
+    protected final Simulation simulation;
+
+    /**
      * The <code>events</code> fields stores the event buffer for this simulator.
      */
     protected EventBuffer events;
@@ -88,17 +94,22 @@ public class Simulator {
      * and events inserted. Users should not create <code>Simulator</code> instances directly, but instead
      * should get an instance of the appropriate processor and load the program into it.
      *
+     * @param i the id of the simulator
+     * @param sim the simulation that this node is a part of
+     * @param f the interpreter factory to create the interpreter
+     * @param mcu the microcontroller unit
      * @param p the program to load into the simulator
      */
-    public Simulator(int i, InterpreterFactory f, Microcontroller mcu, Program p) {
+    Simulator(int i, Simulation sim, InterpreterFactory f, Microcontroller mcu, Program p) {
         id = i;
         microcontroller = mcu;
         program = p;
+        simulation = sim;
 
         // reset the state of the simulation
         clock = mcu.getClockDomain().getMainClock();
         interpreter = f.newInterpreter(this, program, microcontroller.getProperties());
-        events = new EventBuffer(this, 16, EventBuffer.WRAPAROUND);
+        events = new EventBuffer(this);
     }
 
     /**
@@ -467,6 +478,30 @@ public class Simulator {
     }
 
     /**
+     * Gets the simulation that this node is a part of.
+     * @return the simulation
+     */
+    public Simulation getSimulation() {
+        return simulation;
+    }
+
+    /**
+     * Gets a printer for this simulator, which automatically attaches
+     * the time and node number to all output and provides globally ordered
+     * output.
+     * @param category the category for printing
+     * @return a new printer for the category, if the category is enabled; <code>null</code>
+     * if the category is not enabled and no output should be generated
+     */
+    public SimPrinter getPrinter(String category) {
+        return simulation.getPrinter(this, category);
+    }
+
+    public SimPrinter getPrinter() {
+        return simulation.getPrinter(this);
+    }
+
+    /**
      * The <code>getState()</code> retrieves a reference to the current state of the simulation, including the
      * values of all registers, the SRAM, the IO register, the program memory, program counter, etc. This
      * state is mutable.
@@ -492,7 +527,7 @@ public class Simulator {
      * The <code>step()</code> method steps the simulation one instruction or cycle.
      * @return the number of cycles advanced; 1 in the case of sleeping, delaying,
      * 1 in the case of handling an interrupt, and for all other multi-cycle instructions, the
-     * number of cycles consumed by executing the instruction 
+     * number of cycles consumed by executing the instruction
      */
     public int step() {
         return interpreter.step();

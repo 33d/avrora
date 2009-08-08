@@ -65,22 +65,12 @@ public class SimUtil {
         warning(sim, StringUtil.to0xHex(npc, 4), msg);
     }
 
-    public static SimPrinter getPrinter(Simulator s, String str) {
-        return new SimPrinter(s, str);
-    }
-
-    public static EventGen getEventGen(Simulator s, String str) {
-        EventGen gen = new EventGen(s.getEventBuffer());
-        if (Verbose.getVerbosePrinter(str).enabled) gen.enable();
-        return gen;
-    }
-
-    public static void toIDTimeString(StringBuffer buf, int id, Clock clk) {
+    private static void toIDTimeString(StringBuffer buf, int id, Clock clk) {
         boolean R = true;
         StringUtil.justify(R, buf, id, ID_LENGTH);
         buf.append("  ");
 
-        if ( REPORT_SECONDS ) {
+        if (REPORT_SECONDS) {
             StringBuffer buf2 = new StringBuffer(TIME_LENGTH +1);
             long hz = clk.getHZ();
             long count = clk.getCount();

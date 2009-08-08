@@ -36,6 +36,7 @@ import avrora.core.Program;
 import avrora.sim.clock.ClockDomain;
 import avrora.sim.mcu.Microcontroller;
 import avrora.sim.mcu.MicrocontrollerFactory;
+import avrora.sim.Simulation;
 
 /**
  * The <code>DefaultPlatform</code> class represents the simplest type of platform, a microcontroller
@@ -83,13 +84,13 @@ public class DefaultPlatform extends Platform {
          * ID number, using the interpreter created by the given interpreter factory, containing the specified
          * progarm.
          * @param id the ID number of the platform to create
-         * @param p the program to load into the platform
-         * @return a new instance of the <code>Platform</code> interface for this platform
+         * @param sim the simulation
+         * @param p the program to load into the platform @return a new instance of the <code>Platform</code> interface for this platform
          */
-        public Platform newPlatform(int id, Program p) {
+        public Platform newPlatform(int id, Simulation sim, Program p) {
             ClockDomain cd = new ClockDomain(mainClockSpeed);
             cd.newClock("external", extClockSpeed);
-            return new DefaultPlatform(id, mcf.newMicrocontroller(id, cd, p));
+            return new DefaultPlatform(id, mcf.newMicrocontroller(id, sim, cd, p));
         }
     }
 

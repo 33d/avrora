@@ -25,7 +25,6 @@ import avrora.sim.Simulator;
 import avrora.sim.clock.Clock;
 import avrora.sim.platform.Platform;
 import avrora.sim.radio.*;
-import avrora.sim.util.SimUtil;
 import avrora.sim.output.SimPrinter;
 import cck.text.*;
 import cck.util.Option;
@@ -38,7 +37,7 @@ import java.text.DecimalFormat;
 /**
  * Sniffer monitor implementation. This class logs the number of packets, RSSI, LQI..
  * as the accepted by the Daintree Networks’ Sensor Network Analyzer (SNA) software
- * @author Rodolfo de Paz 
+ * @author Rodolfo de Paz
  */
 public class SnifferMonitor extends MonitorFactory {
 
@@ -51,10 +50,10 @@ public class SnifferMonitor extends MonitorFactory {
     protected Option.Str FILENAME = newOption("FileName", "out.dcf",
             "This option is used to give a name to the output file. Name of output is out.dcf as default");
     protected List monitors = new LinkedList();
-    
+
     protected static int packetsTotal;
-        
-    
+
+
     class Mon implements Monitor, Medium.Probe {
         LinkedList bytes;
         final Simulator simulator;
@@ -67,53 +66,52 @@ public class SnifferMonitor extends MonitorFactory {
         int bytesReceived;
         int packetsReceived;
         int bytesCorrupted;
-        
+
         boolean matchStart;
         byte startSymbol;
         long startCycle;
-        String fileName = new String("");
-        
+        String fileName = "";
+
         Date now = new Date();
         double DateTime;
-        
-        
+
+
         Mon(Simulator s) {
             simulator = s;
             Platform platform = simulator.getMicrocontroller().getPlatform();
             Radio radio = (Radio)platform.getDevice("radio");
             radio.getTransmitter().insertProbe(this);
             radio.getReceiver().insertProbe(this);
-            printer = SimUtil.getPrinter(simulator, "monitor.sniffer");
-            printer.enabled = true;
+            printer = simulator.getPrinter();
             showReceived = RECEIVED.get();
             showTransmitted = TRANSMITTED.get();
             Print = PRINT.get();
             fileName = FILENAME.get();
-            bytes = new LinkedList();                               
-            DateTime = now.getTime()/1000;//sec precision            
+            bytes = new LinkedList();
+            DateTime = now.getTime()/1000;//sec precision
             monitors.add(this);
         }
 
         public void fireBeforeTransmit(Medium.Transmitter t, byte val) {
-            if (showTransmitted){                
+            if (showTransmitted){
                 if (bytes.size() == 0) startCycle = simulator.getClock().getCount();
                 bytes.addLast(new Character((char)(0xff & val)));
-                bytesTransmitted++;           
+                bytesTransmitted++;
             }
         }
 
-        public void fireBeforeTransmitEnd(Medium.Transmitter t) {            
+        public void fireBeforeTransmitEnd(Medium.Transmitter t) {
             if (showTransmitted){
-                packetsTransmitted++;       
+                packetsTransmitted++;
                 synchronized ( Terminal.class) {
                     StringBuffer buf = renderTxPacket();
-                    if (Print) Terminal.println(buf.toString());                    
+                    if (Print) Terminal.println(buf.toString());
                     if (showTransmitted) logfile(buf);
                 }
-                bytes = new LinkedList();               
-            }     
+                bytes = new LinkedList();
+            }
         }
-        
+
         public void fireAfterReceive(Medium.Receiver r, char val) {
             if (showReceived){
                 if (bytes.size() == 0) startCycle = simulator.getClock().getCount();
@@ -125,28 +123,28 @@ public class SnifferMonitor extends MonitorFactory {
 
         public void fireAfterReceiveEnd(Medium.Receiver r) {
             if (showReceived){
-                packetsReceived++;    
+                packetsReceived++;
                 synchronized ( Terminal.class) {
                     StringBuffer buf = renderRxPacket();
                     if (Print) Terminal.println(buf.toString());
                     if (showReceived) logfile(buf);
                 }
                 bytes = new LinkedList();
-            }           
+            }
         }
 
         private StringBuffer renderRxPacket() {
             //create string buffer
-            StringBuffer buf = new StringBuffer(3 * bytes.size() + 45);            
+            StringBuffer buf = new StringBuffer(3 * bytes.size() + 45);
             //Append Sequence number
-            packetsTotal++;      
-            buf.append(String.valueOf(packetsTotal)+" ");            
-            //Append Timestamp in us         
-            Clock clk = simulator.getClock();            
-            double seconds = (double)clk.getCount() / (double)clk.getHZ();            
-            DecimalFormat SixDecimals = new DecimalFormat("0.000000");            
-            buf.append(String.valueOf(SixDecimals.format(seconds+DateTime))+" ");
-            //Iterate bytes from the packet and parse them 
+            packetsTotal++;
+            buf.append(String.valueOf(packetsTotal)).append(" ");
+            //Append Timestamp in us
+            Clock clk = simulator.getClock();
+            double seconds = (double)clk.getCount() / (double)clk.getHZ();
+            DecimalFormat SixDecimals = new DecimalFormat("0.000000");
+            buf.append(String.valueOf(SixDecimals.format(seconds + DateTime))).append(" ");
+            //Iterate bytes from the packet and parse them
             Iterator i = bytes.iterator();
             int cntr = 0;
             int len = 0;
@@ -161,35 +159,39 @@ public class SnifferMonitor extends MonitorFactory {
                 if (cntr == 6){
                     len = (int)t;
                     buf.append(StringUtil.toDecimal((long)t,0));
-                    buf.append(" ");       
+                    buf.append(" ");
                 }
                 //data payload
                 if (cntr > 6 && (cntr-6) <= (len)) buf.append(StringUtil.toHex((byte)t, 2));
                 //LQI, FCS, Power
                 if (cntr == (7 + len - 2)) power_received = (int)t-255-45;
-                if (cntr == (7 + len - 1)){ 
-                    lqi = (0x7f & (int)t);                    
-                    fcs = (0x80 & (int)t)>>>7;                           
+                if (cntr == (7 + len - 1)){
+                    lqi = (0x7f & (int)t);
+                    fcs = (0x80 & (int)t)>>>7;
                 }
-            }      
+            }
             //Format 4 Daintree sniffer
             //lqi+fcs+power_received+channel+SN in this channel+duplicate packet = always false
             //+timestamp synchronized = always true+Device id = "unknown"
-            buf.append(" "+StringUtil.toDecimal((byte)lqi, 0)+" "+StringUtil.toHex((byte)fcs, 1)+" "+StringUtil.toDecimal((byte)power_received, 0)+" 26 " +String.valueOf(packetsTotal)+" 0 1 32767");                        
+            buf.append(" ").append(StringUtil.toDecimal((byte) lqi, 0))
+                    .append(" ").append(StringUtil.toHex((byte) fcs, 1))
+                    .append(" ").append(StringUtil.toDecimal((byte) power_received, 0))
+                    .append(" 26 ").append(String.valueOf(packetsTotal))
+                    .append(" 0 1 32767");
         return buf;
-        }                       
+        }
         private StringBuffer renderTxPacket() {
             //create string buffer
-            StringBuffer buf = new StringBuffer(3 * bytes.size() + 45);            
+            StringBuffer buf = new StringBuffer(3 * bytes.size() + 45);
             //Append Sequence number
-            packetsTotal++;      
-            Terminal.append(Terminal.COLOR_DEFAULT, buf, String.valueOf(packetsTotal)+" ");                                                
-            //Append Timestamp in us         
-            Clock clk = simulator.getClock();            
-            double seconds = (double)clk.getCount() / (double)clk.getHZ();            
-            DecimalFormat SixDecimals = new DecimalFormat("0.000000");            
-            buf.append(String.valueOf(SixDecimals.format(seconds+DateTime))+" ");
-            //Iterate bytes from the packet and parse them 
+            packetsTotal++;
+            Terminal.append(Terminal.COLOR_DEFAULT, buf, String.valueOf(packetsTotal)+" ");
+            //Append Timestamp in us
+            Clock clk = simulator.getClock();
+            double seconds = (double)clk.getCount() / (double)clk.getHZ();
+            DecimalFormat SixDecimals = new DecimalFormat("0.000000");
+            buf.append(SixDecimals.format(seconds + DateTime)).append(" ");
+            //Iterate bytes from the packet and parse them
             Iterator i = bytes.iterator();
             int cntr = 0;
             int len = 0;
@@ -200,46 +202,46 @@ public class SnifferMonitor extends MonitorFactory {
                 //length field
                 if (cntr == 6){
                     len = (int)t;
-                    buf.append(StringUtil.toDecimal((long)t,0)+" ");                    
+                    buf.append(StringUtil.toDecimal((long) t, 0)).append(" ");
                 }
                 //data payload
                 if (cntr > 6 && (cntr-6) <= (len)) buf.append(StringUtil.toHex((byte)t, 2));
-            } 
+            }
             //Format 4 Daintree sniffer
             //lqi not supported + fcs + power_received not supported+channel+SN in this channel
             //+duplicate packet = always false+timestamp synchronized = always true+Device id = "unknown"
-            buf.append(" 0 1 32767 26 " +String.valueOf(packetsTotal)+" 0 1 32767");            
+            buf.append(" 0 1 32767 26 ").append(packetsTotal).append(" 0 1 32767");
         return buf;
         }
         private void logfile(StringBuffer buf){
-            if (showReceived || showTransmitted){                
+            if (showReceived || showTransmitted){
                 try{
-                    // Create file                                           
+                    // Create file
                     if (packetsTotal == 1){
-                        BufferedWriter out = new BufferedWriter( new FileWriter(fileName));                      
-                        out.write("#Format=4");         
-                        out.write('\n');    
-                        out.write(buf.toString());         
-                        out.write('\n');                                     
-                        out.close();                        
-                    }else{
-                        BufferedWriter out = new BufferedWriter( new FileWriter(fileName,true));                                              
-                        out.write(buf.toString());         
-                        out.write('\n');         
+                        BufferedWriter out = new BufferedWriter( new FileWriter(fileName));
+                        out.write("#Format=4");
+                        out.write('\n');
+                        out.write(buf.toString());
+                        out.write('\n');
+                        out.close();
+                    } else{
+                        BufferedWriter out = new BufferedWriter( new FileWriter(fileName,true));
+                        out.write(buf.toString());
+                        out.write('\n');
                         out.close();
                     }
-                 
+
                 }catch (Exception e){//Catch exception if any
                     System.err.println("Error: " + e.getMessage());
                 }
             }
         }
-        
+
         public void report() {
             if (monitors != null) {
                 monitors = null;
             }
-            Terminal.nextln();              
+            Terminal.nextln();
             }
         }
     /**
@@ -258,5 +260,5 @@ public class SnifferMonitor extends MonitorFactory {
     public Monitor newMonitor(Simulator s) {
         return new Mon(s);
     }
-        
+
 }

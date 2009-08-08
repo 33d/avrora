@@ -76,7 +76,7 @@ public class SensorSimulation extends Simulation {
             "to model radio propagation.");
     public final Option.Bool LOSSY_MODEL = newOption("lossy-model",false,
             "When this option is set, the radio model takes into account noise and fadings thus" +
-            "implementing in micaz platform the correlation, cca and rssi functions."); 
+            "implementing in micaz platform the correlation, cca and rssi functions.");
     public final Option.Str NOISE = newOption("noise", "",
             "This option can be used to specify the name of " +
             "a file that contains a noise time trace. When this option is specified" +
@@ -187,7 +187,7 @@ public class SensorSimulation extends Simulation {
                 CC1000Radio radio = (CC1000Radio)dev;
                 this.radio = radio;
                 radio.setMedium(createCC1000Medium());
-            }            
+            }
             simulator.delay(startup);
             if (topology != null) {
                 setNodePosition();
@@ -220,7 +220,7 @@ public class SensorSimulation extends Simulation {
         }
         private void createRadioModel() {
            if (topology == null && !TOPOLOGY.isBlank()) {
-                 try {                    
+                 try {
                     if (LOSSY_MODEL.get()){
                         topology = new Topology(TOPOLOGY.get(),true);
                         lossyModel = new LossyModel();
@@ -235,7 +235,7 @@ public class SensorSimulation extends Simulation {
            }
         }
 
-        
+
         private void setNodePosition() {
             if (LOSSY_MODEL.get()){
                 LossyModel.Position p = topology.getPosition(id);
@@ -243,7 +243,7 @@ public class SensorSimulation extends Simulation {
             }else{
                 RadiusModel.Position p = topology.getPositioninRadius(id);
                 if (p != null && radio != null) radiusModel.setPosition(radio, p);
-            }            
+            }
         }
 
         private void updateNodeID() {
@@ -338,7 +338,7 @@ public class SensorSimulation extends Simulation {
 
         // process the sensor data input option
         processSensorInput();
-        
+
         //create noise time trace
         createNoise();
     }
@@ -360,11 +360,11 @@ public class SensorSimulation extends Simulation {
         }
     }
         private void createNoise() throws Exception {
-            if (Noise == null && !NOISE.isBlank()) {                               
-                    Noise = new noise(NOISE.get());                  
+            if (Noise == null && !NOISE.isBlank()) {
+                    Noise = new noise(NOISE.get());
             }else if (Noise == null && NOISE.isBlank()){
                     Noise = new noise();
-            }                    
+            }
     }
 
     private void processSensorInput() {
@@ -419,4 +419,4 @@ public class SensorSimulation extends Simulation {
         return st;
     }
 
-} 
+}

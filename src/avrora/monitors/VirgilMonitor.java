@@ -36,6 +36,7 @@ package avrora.monitors;
 
 import avrora.sim.Simulator;
 import avrora.sim.State;
+import avrora.sim.output.SimPrinter;
 import avrora.sim.util.SimUtil;
 import avrora.core.SourceMapping;
 import avrora.core.Program;
@@ -68,12 +69,14 @@ public class VirgilMonitor extends MonitorFactory {
 
     public class Mon implements Monitor {
         public final Simulator simulator;
+        public final SimPrinter printer;
         public final CallTrace trace;
         public final CallStack stack;
         private final SourceMapping sourceMap;
 
         Mon(Simulator s) {
             simulator = s;
+            printer = s.getPrinter();
 
             trace = new CallTrace(s);
             stack = new CallStack();
@@ -91,7 +94,7 @@ public class VirgilMonitor extends MonitorFactory {
         public class BreakProbe extends Simulator.Probe.Empty {
 
             public void fireBefore(State state, int pc) {
-                String idstr = SimUtil.getIDTimeString(simulator);
+                StringBuffer buf = printer.getBuffer();
                 LegacyState s = (LegacyState) simulator.getState();
                 int code = s.getDataByte((int)STATUS_ADDR.get());
                 String name = "UnknownException";
@@ -124,25 +127,12 @@ public class VirgilMonitor extends MonitorFactory {
                         msg = "method not implemented";
                         break;
                 }
-                Terminal.print(idstr);
-                Terminal.printRed(name);
-                Terminal.print(": "+msg+" @ ");
-                Terminal.printBrightCyan(StringUtil.addrToString(pc));
-                Terminal.nextln();
+                Terminal.append(Terminal.COLOR_RED, buf, name);
+                buf.append(": ").append(msg).append(" @ ");
+                Terminal.append(Terminal.COLOR_BRIGHT_CYAN, buf, StringUtil.addrToString(pc));
+                printer.printBuffer(buf);
 
-                printStack(idstr);
-            }
-        }
-
-        private void printStack(String idstr) {
-            int depth = stack.getDepth();
-            for (int cntr = depth - 1; cntr >= 0; cntr--) {
-                Terminal.print(idstr);
-                Terminal.print("      in ");
-                int inum = stack.getInterrupt(cntr);
-                if ( inum >= 0 ) Terminal.printRed("#"+inum +" ");
-                Terminal.printGreen(sourceMap.getName(stack.getTarget(cntr)));
-                Terminal.nextln();
+                stack.printStack(printer, sourceMap);
             }
         }
 

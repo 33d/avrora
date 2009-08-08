@@ -39,7 +39,6 @@ import avrora.sim.clock.Clock;
 import avrora.sim.clock.Synchronizer;
 import avrora.sim.energy.Energy;
 import avrora.sim.mcu.*;
-import avrora.sim.util.*;
 import cck.text.StringUtil;
 import cck.util.Arithmetic;
 
@@ -135,7 +134,7 @@ public class CC1000Radio implements Radio {
         this.sim = mcu.getSimulator();
         this.clock = sim.getClock();
 
-        radioPrinter = SimUtil.getPrinter(sim, "radio.cc1000");
+        radioPrinter = sim.getPrinter("radio.cc1000");
 
         for (int i = 0x14; i < registers.length; i++) {
             registers[i] = new DummyRegister(i);
@@ -216,7 +215,7 @@ public class CC1000Radio implements Radio {
         public void write(byte val) {
             value = val;
             decode(value);
-            if (radioPrinter.enabled) {
+            if (radioPrinter != null) {
                 printStatus();
             }
         }
@@ -298,12 +297,12 @@ public class CC1000Radio implements Radio {
             boolean oldrxtx = Arithmetic.getBit(oldVal, RXTX);
             if (rxtx && !oldrxtx) {
                 // switch from receive to transmit
-                if (radioPrinter.enabled) {
+                if (radioPrinter != null) {
                     radioPrinter.println("CC1000: RX end receiving -> begin transmitting");
                 }
             } else if (!rxtx && oldrxtx) {
                 // switch from transmit to receive
-                if (radioPrinter.enabled) {
+                if (radioPrinter != null) {
                     radioPrinter.println("CC1000: TX end transmitting -> begin receiving");
                 }
             }
@@ -678,9 +677,9 @@ public class CC1000Radio implements Radio {
                 //worst case is 34ms
                 //it is determined with: 34ms * 1MHz / (Fxosc / REFDIV)
                 //with Fxosc is 14.7456 MHz for CC1000 on Mica2
-                //and REFDIV is set in the PLL register 
+                //and REFDIV is set in the PLL register
                 //in the current TinyOS version (1.1.7) REFDIV seems to be 14
-                //resulting in a delay of a little more than 32ms 
+                //resulting in a delay of a little more than 32ms
                 //Reference: CC1000 datasheet (rev 2.1) pages 20 and 22
                 double calMs = (34.0 * 1000000.0 / FXOSC_FREQUENCY) * PLL_reg.refDiv;
                 clock.insertEvent(calibrate, clock.millisToCycles(calMs));
@@ -715,7 +714,7 @@ public class CC1000Radio implements Radio {
                 value = Arithmetic.setBit(value, CAL_COMPLETE, true);
                 decode(value);
                 LOCK_reg.write((byte)((LOCK_reg.read() & 0x0f) | 0x50)); // LOCK = CAL_COMPLETE
-                if (radioPrinter.enabled) {
+                if (radioPrinter != null) {
                     radioPrinter.println("CC1000: Calibration complete ");
                 }
                 calibrating = false;
@@ -902,7 +901,7 @@ public class CC1000Radio implements Radio {
 
         SerialConfigurationInterface() {
 
-            readerPrinter = SimUtil.getPrinter(sim, "radio.cc1000.pinconfig");
+            readerPrinter = sim.getPrinter("radio.cc1000.pinconfig");
         }
 
         /**
@@ -974,10 +973,10 @@ public class CC1000Radio implements Radio {
                 // complete the command.
                 if (writeCommand) {
                     registers[address].write((byte)writeValue);
-                    if ( readerPrinter.enabled )
+                    if (readerPrinter != null)
                         readerPrinter.println("CC1000.Reg[" + StringUtil.toHex(address, 2) + "] <= " + StringUtil.toMultirepString(writeValue, 8));
                 } else {
-                    if ( readerPrinter.enabled )
+                    if (readerPrinter != null)
                         readerPrinter.println("CC1000.Reg[" + StringUtil.toHex(address, 2) + "] -> " + StringUtil.toMultirepString(readData, 8));
                 }
                 // reset the state
@@ -1010,7 +1009,7 @@ public class CC1000Radio implements Radio {
             power = 0.12 * powerSet - 1.8;
         else
             power = 0.00431 * powerSet - 0.06459;
-         
+
       return power;
    }
 
@@ -1052,7 +1051,7 @@ public class CC1000Radio implements Radio {
             super(m, sim.getClock());
         }
         public byte nextByte() {
-            if (radioPrinter.enabled) {
+            if (radioPrinter != null) {
                 radioPrinter.println("CC1000 "+StringUtil.to0xHex(txBuffer, 2)+" --------> ");
             }
             return txBuffer;
@@ -1072,9 +1071,9 @@ public class CC1000Radio implements Radio {
               return false;
          }
           public void setRSSI (double PRec){
-              //do nothing              
+              //do nothing
           }
-          public void setBER (double BER){             
+          public void setBER (double BER){
             //do nothing
         }
         public byte nextByte(boolean lock, byte val) {
@@ -1084,12 +1083,12 @@ public class CC1000Radio implements Radio {
                 int offset = (int)(8 * (delta % cyclesPerByte) / cyclesPerByte);
                 // shift in the new bits
                 rxBuffer = (rxBuffer << 8) | (~val & 0xff) << offset;
-                if (radioPrinter.enabled) {
+                if (radioPrinter != null) {
                     radioPrinter.println("CC1000 <======== "+StringUtil.to0xHex(val, 2));
                 }
             } else {
                 rxBuffer = 0;
-                if (radioPrinter.enabled) {
+                if (radioPrinter != null) {
                     radioPrinter.println("CC1000 lock lost");
                 }
             }

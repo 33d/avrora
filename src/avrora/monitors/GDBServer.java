@@ -37,7 +37,6 @@ import avrora.arch.legacy.LegacyState;
 import avrora.sim.Simulator;
 import avrora.sim.State;
 import avrora.sim.output.SimPrinter;
-import avrora.sim.util.SimUtil;
 import cck.text.StringUtil;
 import cck.text.Terminal;
 import cck.util.Option;
@@ -96,7 +95,7 @@ public class GDBServer extends MonitorFactory {
         GDBMonitor(Simulator s, int p) {
             simulator = s;
             port = p;
-            printer = SimUtil.getPrinter(simulator, "monitor.gdb");
+            printer = simulator.getPrinter("monitor.gdb");
             try {
                 serverSocket = new ServerSocket(port);
             } catch ( IOException e ) {
@@ -105,7 +104,7 @@ public class GDBServer extends MonitorFactory {
             // insert the startup probe at the beginning of the program
             simulator.insertProbe(new StartupProbe(), 0);
 
-            // insert the stepping probe 
+            // insert the stepping probe
             isStepping=false;
             simulator.insertProbe(STEPPROBE);
 
@@ -144,8 +143,9 @@ public class GDBServer extends MonitorFactory {
                         simulator.stop();
                         break;
                     }
-                    if ( printer.enabled )
+                    if (printer != null) {
                         printer.println(" --> "+command);
+                    }
                     // invoke the command: continue the program if the return value is true
                     if ( executeCommand(command) )
                         break;
@@ -447,11 +447,15 @@ public class GDBServer extends MonitorFactory {
             byte[] bytes = packet.getBytes();
 
             int cksum = 0;
-            for ( int cntr = 0; cntr < bytes.length; cksum += bytes[cntr++] ) ;
+            int cntr = 0;
+            while (cntr < bytes.length) {
+                cksum += bytes[cntr++];
+            }
 
             String np = '$' +packet+ '#' +StringUtil.toLowHex(cksum & 0xff, 2);
-            if ( printer.enabled )
+            if (printer != null) {
                 printer.println("   <-- "+np+"");
+            }
 
             output.write(np.getBytes());
         }
@@ -471,7 +475,7 @@ public class GDBServer extends MonitorFactory {
                 StringBuffer buf = new StringBuffer(32);
                 buf.append((char)i);
 
-                while ( true ) {
+                while (true) {
                     i = input.read();
                     if ( i < 0 ) return buf.toString();
 
@@ -498,9 +502,9 @@ public class GDBServer extends MonitorFactory {
             protected ExceptionWatch(String s) {
                 segment = s;
             }
-            
+
             public void fireBeforeRead(State s, int address) {
-                if(printer.enabled) {
+                if (printer != null) {
                     printer.println("GDB caught invalid read of " + segment + " at " + address);
                 }
 
@@ -509,7 +513,7 @@ public class GDBServer extends MonitorFactory {
             }
 
             public void fireBeforeWrite(State s, int address, byte val) {
-                if(printer.enabled) {
+                if (printer != null) {
                     printer.println("GDB caught invalid write of " + segment + " at " + address);
                 }
 
@@ -524,7 +528,7 @@ public class GDBServer extends MonitorFactory {
          */
         protected class StartupProbe implements Simulator.Probe {
             public void fireBefore(State s, int pc) {
-                if ( printer.enabled ) {
+                if (printer != null) {
                     printer.println("--IN STARTUP PROBE @ "+StringUtil.addrToString(pc)+"--");
                 }
                 Terminal.println("GDBServer listening on port "+port+"...");
@@ -533,7 +537,7 @@ public class GDBServer extends MonitorFactory {
                     socket = serverSocket.accept();
                     input = socket.getInputStream();
                     output = socket.getOutputStream();
-                    if ( printer.enabled )
+                    if ( printer != null )
                         printer.println("Connection established with: "+socket.getInetAddress().getCanonicalHostName());
                     serverSocket.close();
                 } catch ( IOException e ) {
@@ -556,7 +560,7 @@ public class GDBServer extends MonitorFactory {
          */
         protected class BreakpointProbe extends Simulator.Probe.Empty {
             public void fireBefore(State s, int pc) {
-                if ( printer.enabled )
+                if (printer != null)
                     printer.println("--IN BREAKPOINT PROBE @ "+StringUtil.addrToString(pc)+"--");
                 // if we already hit a breakpoint then we dont need to hit the step probe too
                 isStepping=false;
@@ -571,17 +575,17 @@ public class GDBServer extends MonitorFactory {
          */
         protected class StepProbe implements Simulator.Probe {
             public void fireBefore(State s, int pc) {
-                if ( printer.enabled )
+                if (printer != null)
                     printer.println("--IN STEP PROBE @ "+StringUtil.addrToString(pc)+"--");
-                if(isStepping){
+                if (isStepping){
                     isStepping=false;
                     commandLoop("T05");
                 }
             }
-            
+
             public void fireAfter(State s, int pc) {
-                if ( printer.enabled )
-                    printer.println("--AFTER STEP PROBE @ "+StringUtil.addrToString(pc)+"--");               
+                if (printer != null)
+                    printer.println("--AFTER STEP PROBE @ "+StringUtil.addrToString(pc)+"--");
             }
         }
 

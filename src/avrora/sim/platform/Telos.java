@@ -37,6 +37,7 @@ package avrora.sim.platform;
 import avrora.arch.msp430.mcu.F1611;
 import avrora.core.Program;
 import avrora.sim.Simulator;
+import avrora.sim.Simulation;
 import avrora.sim.clock.ClockDomain;
 import avrora.sim.mcu.Microcontroller;
 import cck.text.Terminal;
@@ -55,14 +56,14 @@ public class Telos extends Platform {
          * The <code>newPlatform()</code> method is a factory method used to create new instances of the
          * <code>Telos</code> class.
          * @param id the integer ID of the node
-         * @param p the program to load onto the node
-         * @return a new instance of the <code>Mica2</code> platform
+         * @param sim
+         *@param p the program to load onto the node @return a new instance of the <code>Mica2</code> platform
          */
-        public Platform newPlatform(int id, Program p) {
+        public Platform newPlatform(int id, Simulation sim, Program p) {
             ClockDomain cd = new ClockDomain(MAIN_HZ);
             cd.newClock("external", EXT_HZ);
 
-            return new Telos(new F1611(id, cd, p));
+            return new Telos(new F1611(id, sim, cd, p));
         }
     }
 

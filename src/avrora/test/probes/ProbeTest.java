@@ -34,7 +34,6 @@ package avrora.test.probes;
 import avrora.sim.Simulator;
 import avrora.sim.State;
 import avrora.sim.clock.DeltaQueue;
-import avrora.sim.util.SimUtil;
 import avrora.sim.output.SimPrinter;
 import cck.text.StringUtil;
 import java.util.*;
@@ -238,8 +237,9 @@ public class ProbeTest {
     }
 
     protected void recordEvent(String e) {
-        if ( printer.enabled )
+        if (printer != null) {
             printer.println(e);
+        }
         long time = simulator == null ? eventqueue.getCount() : simulator.getState().getCycles();
         recordedEvents.add(new Event(time, e));
     }
@@ -287,7 +287,7 @@ public class ProbeTest {
 
     public void run(Simulator s) throws Exception {
         simulator = s;
-        printer = SimUtil.getPrinter(s, "test.probes");
+        printer = s.getPrinter("test.probes");
         eventqueue = null;
         recordedEvents = new LinkedList();
         execute(mainCode);
@@ -316,7 +316,7 @@ public class ProbeTest {
             Event expect = (Event)e.next();
             Event recorded = (Event)r.next();
 
-            if ( printer.enabled ) {
+            if (printer != null) {
                 printer.println(" --> checking "+recorded.time+" "+recorded.name+" = "
                         +expect.time+" "+expect.name);
             }

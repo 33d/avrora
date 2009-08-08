@@ -63,6 +63,8 @@ public class SimAction extends Action {
     public final Option.Str SIMULATION = newOption("simulation", "single",
             "The \"simulation\" option selects from the available simulation types, including a single node " +
             "simulation, a sensor network simulation, or a robotics simulation.");
+    public final Option.Bool THROUGHPUT = newOption("throughput", false,
+            "This option enables reporting of simulator throughput (i.e. mhz).");
 
     protected Simulation simulation;
     protected long startms;
@@ -131,7 +133,7 @@ public class SimAction extends Action {
             t.printStackTrace();
         } finally {
             TermUtil.printSeparator();
-            reportTime(simulation, delta);
+            reportTime(simulation, delta, THROUGHPUT.get());
             reportMonitors(simulation);
         }
     }
@@ -188,7 +190,7 @@ public class SimAction extends Action {
         }
     }
 
-    protected static void reportTime(Simulation sim, long diff) {
+    protected static void reportTime(Simulation sim, long diff, boolean throughput) {
         // calculate total throughput over all threads
         Iterator i = sim.getNodeIterator();
         long aggCycles = 0;
@@ -202,12 +204,14 @@ public class SimAction extends Action {
             if ( count > maxCycles ) maxCycles = count;
         }
         TermUtil.reportQuantity("Simulated time", maxCycles, "cycles");
-        TermUtil.reportQuantity("Time for simulation", TimeUtil.milliToSecs(diff), "seconds");
-        int nn = sim.getNumberOfNodes();
-        double thru = ((double)aggCycles) / (diff * 1000);
-        TermUtil.reportQuantity("Total throughput", (float)thru, "mhz");
-        if ( nn > 1 )
-            TermUtil.reportQuantity("Throughput per node", (float)(thru / nn), "mhz");
+        if (throughput) {
+            TermUtil.reportQuantity("Time for simulation", TimeUtil.milliToSecs(diff), "seconds");
+            int nn = sim.getNumberOfNodes();
+            double thru = ((double)aggCycles) / (diff * 1000);
+            TermUtil.reportQuantity("Total throughput", (float)thru, "mhz");
+            if ( nn > 1 )
+                TermUtil.reportQuantity("Throughput per node", (float)(thru / nn), "mhz");
+        }
     }
 
     /**
@@ -280,7 +284,7 @@ public class SimAction extends Action {
 
     public class ShutdownThread extends Thread {
         public void run() {
-            exitSimulation(new AsynchronousExit());            
+            exitSimulation(new AsynchronousExit());
         }
     }
 }

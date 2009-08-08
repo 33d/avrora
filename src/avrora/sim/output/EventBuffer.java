@@ -44,88 +44,65 @@ import java.util.ArrayList;
  * @author Ben L. Titzer
  */
 public class EventBuffer {
-    public static final DiscardPolicy DISCARD = new DiscardPolicy();
-    public static final WrapAroundPolicy WRAPAROUND = new WrapAroundPolicy();
-    public static final GrowPolicy GROW = new GrowPolicy();
 
     public class Event {
-        protected long time;
-        protected long param;
-        protected Object object;
+        public final long time;
+        public final Object object;
+        public final long param;
+        public Event next;
 
-        protected Simulator getSimulator() {
+        Event(Object object, long param) {
+            this.time = sim.getClock().getCount();
+            this.object = object;
+            this.param = param;
+        }
+
+        public Simulator getSimulator() {
             return sim;
         }
     }
 
-    public interface OverflowPolicy {
-        public void overflow(EventBuffer buf);
-    }
-
-    protected static class DiscardPolicy implements OverflowPolicy {
-        public void overflow(EventBuffer buf) {
-            buf.flush();
-        }
-    }
-
-    protected static class WrapAroundPolicy implements OverflowPolicy {
-        public void overflow(EventBuffer buf) {
-            buf.index = 0;
-        }
-    }
-
-    protected static class GrowPolicy implements OverflowPolicy {
-        public void overflow(EventBuffer buf) {
-            EventBuffer.Event[] old = buf.buffer;
-            buf.buffer = new Event[old.length * 2];
-            System.arraycopy(buf.buffer, 0, old, 0, old.length);
-        }
-    }
-
     public final Simulator sim;
-    protected final OverflowPolicy policy;
-    protected Event[] buffer;
-    protected int index;
+    protected Event head;
+    protected Event tail;
 
-    public EventBuffer(Simulator s, int length, OverflowPolicy p) {
-        buffer = new Event[length];
+    public EventBuffer(Simulator s) {
         sim = s;
-        policy = p;
     }
 
     protected Event recordEvent(Object o, long param) {
-        if (index >= buffer.length) {
-            policy.overflow(this);
+        Event e = new Event(o, param);
+        if (tail == null) {
+            head = tail = e;
+        } else {
+            tail.next = e;
+            tail = e;
         }
-        Event e = buffer[index];
-        if (e == null) {
-            buffer[index] = e = new Event();
-        }
-        index++;
-        e.time = sim.getClock().getCount();
-        e.object = o;
-        e.param = param;
         return e;
     }
 
-    public void flush() {
-        for (int i = 0; i < index; i++) {
-            EventBuffer.Event e = buffer[i];
-            e.time = 0;
-            e.object = null;
+    public Event extract(long time) {
+        Event prev = null;
+        Event cur = head;
+        while (cur != null) {
+            if (cur.time >= time) {
+                // chop the list before this node
+                if (prev != null) {
+                    // extracted at least one node
+                    prev.next = null;
+                    prev = head;
+                    head = cur;
+                    return prev;
+                }
+                // did not extract any nodes
+                return null;
+            }
+            prev = cur;
+            cur = cur.next;
         }
-        index = 0;
-    }
-
-    public List toList() {
-        ArrayList list = new ArrayList(index);
-        for (int i = 0; i < index; i++) list.add(buffer[i]);
-        return list;
-    }
-
-    public List extractList() {
-        List list = toList();
-        flush();
-        return list;
+        // consumed the whole list
+        cur = head;
+        head = tail = null;
+        return cur;
     }
 }

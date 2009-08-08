@@ -36,6 +36,7 @@ import avrora.arch.AbstractInstr;
 import avrora.core.*;
 import avrora.sim.Simulator;
 import avrora.sim.State;
+import avrora.sim.output.SimPrinter;
 import avrora.sim.util.SimUtil;
 import cck.text.*;
 import cck.util.Option;
@@ -67,6 +68,7 @@ public class TraceMonitor extends MonitorFactory {
      */
     public class Mon implements Monitor {
         public final Simulator simulator;
+        public final SimPrinter printer;
         public final Program program;
         public final GlobalProbe PROBE;
         public int count;
@@ -138,24 +140,24 @@ public class TraceMonitor extends MonitorFactory {
 
         private void print(State s, AbstractInstr i) {
             //"#k{%x}: #k{%s} %s", color, pc, color, i.getVariant(), i.getOperands()
-            StringBuffer buf = new StringBuffer(100);
-            SimUtil.getIDTimeString(buf, simulator);
+
+            StringBuffer buf = printer.getBuffer(100);
             int pc = s.getPC();
             int color = pc == nextpc ? Terminal.COLOR_BLUE : Terminal.COLOR_CYAN;
             Terminal.append(color, buf, StringUtil.to0xHex(pc, 4));
             buf.append(": ");
             buf.append(i.toString());
-            Terminal.println(buf.toString());
+            printer.printBuffer(buf);
             nextpc = pc + i.getSize();
         }
 
         private void print(String s) {
-            String idstr = SimUtil.getIDTimeString(simulator);
-            Terminal.println(idstr+s);
+            printer.println(s);
         }
 
         Mon(Simulator s) {
             simulator = s;
+            printer = s.getPrinter();
             program = s.getProgram();
             PROBE = new GlobalProbe();
             long time = TIME.get();

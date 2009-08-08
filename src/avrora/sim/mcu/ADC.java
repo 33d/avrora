@@ -247,9 +247,13 @@ public class ADC extends AtmelInternalDevice {
         private void insertConversion() {
             mainClock.insertEvent(conversion, getPrescaler() * cycles);
             if (ADMUX_reg.isSingleEnded()) {
-                event.gen("ADC: beginning sample of channel %i", ADMUX_reg.getSingleIndex());
+                if (devicePrinter != null) {
+                    devicePrinter.println("ADC: beginning sample of channel " + ADMUX_reg.getSingleIndex());
+                }
             } else {
-                event.gen("ADC: beginning sample of channels %i - %i", ADMUX_reg.getPosIndex(), ADMUX_reg.getNegIndex());
+                if (devicePrinter != null) {
+                    devicePrinter.println("ADC: beginning sample of channels " + ADMUX_reg.getPosIndex() + " - " + ADMUX_reg.getNegIndex());
+                }
             }
             cycles = 13;
         }
@@ -265,7 +269,7 @@ public class ADC extends AtmelInternalDevice {
         private int getPrescaler() {
             return PRESCALER[_prescaler.getValue()];
         }
-        
+
         /**
          * The conversion event for the ADC. It is fired at a certain delay after the start conversion bit
          * in the control register is set.
@@ -276,7 +280,9 @@ public class ADC extends AtmelInternalDevice {
 
                 int val = convertVoltage();
                 write16(val, ADCH_reg, ADCL_reg);
-                event.gen("ADC: conversion completed -> %i", val);
+                if (devicePrinter != null) {
+                    devicePrinter.println("ADC: conversion completed -> " + val);
+                }
                 _adif.setValue(true);
                 //value = Arithmetic.setBit(value, ADIF, adif = true);
                 interpreter.setPosted(interruptNum, true);

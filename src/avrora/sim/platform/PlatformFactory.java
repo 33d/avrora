@@ -33,6 +33,7 @@
 package avrora.sim.platform;
 
 import avrora.core.Program;
+import avrora.sim.Simulation;
 
 /**
  * The <code>PlatformFactory</code> interface represents a factory-style interface where an implementor can
@@ -47,9 +48,9 @@ public interface PlatformFactory {
      * ID number, using the interpreter created by the given interpreter factory, containing the specified
      * progarm.
      * @param id the ID number of the platform to create
-     * @param p the program to load into the platform
-     * @return a new instance of the <code>Platform</code> interface for this platform
+     * @param sim
+     *@param p the program to load into the platform @return a new instance of the <code>Platform</code> interface for this platform
      */
-    public Platform newPlatform(int id, Program p);
+    public Platform newPlatform(int id, Simulation sim, Program p);
 
 }

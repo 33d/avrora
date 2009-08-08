@@ -38,7 +38,6 @@ import avrora.sim.Simulator;
 import avrora.sim.State;
 import avrora.sim.output.SimPrinter;
 import avrora.sim.mcu.Microcontroller;
-import avrora.sim.util.SimUtil;
 import cck.text.StringUtil;
 import cck.util.Option;
 import java.util.Iterator;
@@ -62,9 +61,8 @@ public class IORegMonitor extends MonitorFactory {
         SimPrinter printer;
 
         Monitor(Simulator s) {
-            printer = SimUtil.getPrinter(s, "monitors.ioregs");
+            printer = s.getPrinter();
             insertWatches(s);
-            printer.enabled = true;
         }
 
         private void insertWatches(Simulator s) {

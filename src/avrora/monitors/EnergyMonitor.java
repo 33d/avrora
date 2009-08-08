@@ -39,6 +39,7 @@ package avrora.monitors;
 
 import avrora.sim.Simulator;
 import avrora.sim.State;
+import avrora.sim.output.SimPrinter;
 import avrora.sim.clock.Clock;
 import avrora.sim.energy.*;
 import avrora.sim.platform.Platform;
@@ -167,19 +168,11 @@ public class EnergyMonitor extends MonitorFactory {
                     simulator.insertEvent(this, interval);
                 } else {
                     //shutdown this node
-                    String itstr = SimUtil.getIDTimeString(simulator);
+                    SimPrinter printer = simulator.getPrinter();
+                    StringBuffer buf = printer.getBuffer();
+                    Terminal.append(Terminal.COLOR_YELLOW, buf, "energy limit exceeded: "+ totalEnergy+" joules");
+                    printer.printBuffer(buf);
 
-                    Terminal.print(itstr);
-                    Terminal.printYellow("energy limit exceeded: "+ totalEnergy+" joules");
-                    Terminal.nextln();
-
-                    //remove radio
-                    /*
-                    Radio radio = (Radio)platform.getDevice("radio");
-                    RadioAir air = radio.getAir();
-                    if ( air != null )
-                        air.removeRadio(radio);
-                    */
                     // TODO: remove the node from simulation.
                     //stop loop
                     simulator.stop();

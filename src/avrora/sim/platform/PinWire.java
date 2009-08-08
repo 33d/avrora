@@ -34,6 +34,7 @@ package avrora.sim.platform;
 
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.Simulator;
+import avrora.sim.output.SimPrinter;
 import avrora.sim.clock.Clock;
 import avrora.sim.mcu.ATMegaFamily;
 import avrora.sim.mcu.Microcontroller;
@@ -105,7 +106,7 @@ public class PinWire {
         isInterruptPin = false;
         interruptNum = 0;
         atmel = null;
-        
+
        	propDelay = clock.millisToCycles(0.0014);
 
     }
@@ -128,7 +129,7 @@ public class PinWire {
         atmel = (ATMegaFamily) mcu;
         isInterruptPin = true;
         this.interruptNum = interruptNum;
-        
+
        	propDelay = clock.millisToCycles(0.0014);
 
     }
@@ -136,7 +137,7 @@ public class PinWire {
     public String readName() {
     	return pinName;
     }
-    
+
     public void enableConnect() {
         state.insertProbe(probe);
     }
@@ -159,20 +160,25 @@ public class PinWire {
      * display changes to the state.
      */
     class PinWireProbe implements FiniteStateMachine.Probe {
+        final SimPrinter printer;
+
+        PinWireProbe() {
+            printer = sim.getPrinter();
+        }
+
         public void fireBeforeTransition(int beforeState, int afterState) {
             // do nothing
         }
 
         public void fireAfterTransition(int beforeState, int afterState) {
             if (beforeState == afterState) return;
-            
+
             // print the status of the PinWire
-            synchronized (Terminal.class) {
-                // synchronize on the terminal to prevent interleaved output
-                Terminal.print(SimUtil.getIDTimeString(sim));
-                Terminal.print(colorNum, pinName);
-                Terminal.println(": " + modeName[afterState]);
-            }
+            StringBuffer buf = printer.getBuffer(20);
+            Terminal.append(colorNum, buf, pinName);
+            buf.append(": ");
+            buf.append(modeName[afterState]);
+            printer.printBuffer(buf);
             
             // if this is an interrupt pin, and the transition triggers an interrupt
             // post an interrupt
@@ -252,24 +258,24 @@ public class PinWire {
          */
         public void write(boolean level) {
 
-        	// propagate signal after 1.4 uS = 
+        	// propagate signal after 1.4 uS =
         	//sim.insertEvent(new WirePropagationEvent(level), propDelay);
-        	
-        	
+
+
             if (level)
                 state.transition(1);
             else
                 state.transition(0);
 
         }
-        
+
         protected class WirePropagationEvent implements Simulator.Event {
         	private boolean value;
-        	
+
 			public WirePropagationEvent(boolean value) {
 				this.value = value;
 			}
-			
+
 			// propagate signal to the pin finally
 			public void fire() {
 		        if (value)

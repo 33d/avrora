@@ -56,6 +56,11 @@ public class Verbose {
         return p;
     }
 
+    public static boolean isVerbose(String category) {
+        Printer printer = (Printer) printerMap.get(category);
+        return printer != null && printer.enabled;
+    }
+
     public static void setVerbose(String category, boolean on) {
         if ("all".equals(category)) {
             ALL = on;

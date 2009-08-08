@@ -39,6 +39,7 @@ import avrora.arch.msp430.MSP430Properties;
 import avrora.core.Program;
 import avrora.sim.Interpreter;
 import avrora.sim.Simulator;
+import avrora.sim.Simulation;
 import avrora.sim.clock.ClockDomain;
 import avrora.sim.mcu.*;
 import java.util.HashMap;
@@ -64,9 +65,9 @@ public class F1611 extends DefaultMCU {
 
     protected final Interpreter interpreter;
 
-    public F1611(int id, ClockDomain cd, Program p) {
+    public F1611(int id, Simulation sim, ClockDomain cd, Program p) {
         super(cd, 60, PROPS.getRegisterLayout().instantiate(), null);
-        simulator = new Simulator(id, MSP430Interpreter.FACTORY, this, p);
+        simulator = sim.createSimulator(id, MSP430Interpreter.FACTORY, this, p);
         interpreter = simulator.getInterpreter();
     }
 

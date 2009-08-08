@@ -139,10 +139,10 @@ public class SPI extends AtmelInternalDevice implements SPIDevice, InterruptTabl
         protected void enableTransfer() {
 
             if (SPCR_reg._master.getValue() && SPCR_reg._enabled.getValue() && !transmitting) {
-                if (devicePrinter.enabled) {
+                if (devicePrinter != null) {
                     devicePrinter.println("SPI: Master mode. Enabling transfer. ");
                 }
-                SPSR_reg.clearSPIF();                
+                SPSR_reg.clearSPIF();
                 transmitting = true;
                 frame = newFrame(SPDR_reg.transmitReg.read());
                 mainClock.insertEvent(this, period);
@@ -151,7 +151,7 @@ public class SPI extends AtmelInternalDevice implements SPIDevice, InterruptTabl
 
         public void fire() {
             if (SPCR_reg._enabled.getValue()) {
-                SPSR_reg.clearSPIF();//after every reading SPSR must be a cleared 
+                SPSR_reg.clearSPIF();//after every reading SPSR must be a cleared
                 receive(connectedDevice.exchange(frame));
                 transmitting = false;
                 postSPIInterrupt();
@@ -229,7 +229,7 @@ public class SPI extends AtmelInternalDevice implements SPIDevice, InterruptTabl
         final RegisterView _spr = RegisterUtil.bitRangeView(this, SPR0, SPR1);
 
         public void write(byte val) {
-            if (devicePrinter.enabled)
+            if (devicePrinter != null)
                 devicePrinter.println("SPI: wrote " + StringUtil.toMultirepString(val, 8) + " to SPCR");
             super.write(val);
             decode(val);
@@ -277,7 +277,7 @@ public class SPI extends AtmelInternalDevice implements SPIDevice, InterruptTabl
         byte prev_value;
 
         public void write(byte val) {
-            if (devicePrinter.enabled)
+            if (devicePrinter != null)
                 devicePrinter.println("SPI: wrote " + val + " to SPSR");
             super.write(val);
             decode(val);

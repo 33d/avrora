@@ -311,7 +311,7 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
      * Flags the overflow interrupt for this timer.
      */
     protected void overflow() {
-        if (devicePrinter.enabled) {
+        if (devicePrinter != null) {
             boolean enabled = xTIMSK_reg.readBit(TOIEn);
             devicePrinter.println("Timer" + n + ".overFlow (enabled: " + enabled + ')' + "  ");
         }
@@ -400,11 +400,11 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
     private void resetPeriod(int nPeriod) {
         if (nPeriod == 0) {
             // disable the timer.
-            if (devicePrinter.enabled) devicePrinter.println("Timer" + n + " disabled");
+            if (devicePrinter != null) devicePrinter.println("Timer" + n + " disabled");
             if (ticker != null) timerClock.removeEvent(ticker);
         } else {
             // enable the timer.
-            if (devicePrinter.enabled)
+            if (devicePrinter != null)
                 devicePrinter.println("Timer" + n + " enabled: period = " + nPeriod + " mode = " + WGMn.value);
             if (ticker != null) timerClock.removeEvent(ticker);
             ticker = tickers[WGMn.value];

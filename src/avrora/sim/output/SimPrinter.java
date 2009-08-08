@@ -40,24 +40,17 @@ import cck.text.Terminal;
 import cck.util.Util;
 
 /**
-     * The <code>Simulator.Printer</code> class is a printer that is tied to a specific <code>Simulator</code>
+ * The <code>Simulator.Printer</code> class is a printer that is tied to a specific <code>Simulator</code>
  * instance. Being tied to this instance, it will always report the node ID and time before printing
  * anything. This simple mechanism allows the output to be much cleaner to track the output
  * of multiple nodes at once.
  */
 public class SimPrinter {
 
-    /**
-     * The <code>enabled</code> field is true when this printer is enabled. When this printer
-     * is not enabled, the <code>println()</code> method SHOULD NOT BE CALLED.
-     */
-    public boolean enabled;
     private Simulator simulator;
 
     public SimPrinter(Simulator simulator, String category) {
         this.simulator = simulator;
-        Verbose.Printer p = Verbose.getVerbosePrinter(category);
-        enabled = p.enabled;
     }
 
     /**
@@ -68,16 +61,31 @@ public class SimPrinter {
      * @param s the string to print
      */
     public void println(String s) {
-        if (enabled) {
-            synchronized ( Terminal.class ) {
-                // synchronize on the terminal to prevent interleaved output
-                StringBuffer buf = new StringBuffer(s.length()+30);
-                SimUtil.getIDTimeString(buf, simulator);
-                buf.append(s);
-                Terminal.println(buf.toString());
-            }
-        } else {
-            throw Util.failure("Disabled printer: performance bug!");
+        synchronized ( Terminal.class ) {
+            // synchronize on the terminal to prevent interleaved output
+            StringBuffer buf = new StringBuffer(s.length() + 30);
+            SimUtil.getIDTimeString(buf, simulator);
+            buf.append(s);
+            Terminal.println(buf.toString());
         }
+    }
+
+    public void printBuffer(StringBuffer buffer) {
+        synchronized ( Terminal.class ) {
+            // synchronize on the terminal to prevent interleaved output
+            Terminal.println(buffer.toString());
+        }
+    }
+
+    public StringBuffer getBuffer() {
+        StringBuffer buf = new StringBuffer(70);
+        SimUtil.getIDTimeString(buf, simulator);
+        return buf;
+    }
+
+    public StringBuffer getBuffer(int size) {
+        StringBuffer buf = new StringBuffer(30 + size);
+        SimUtil.getIDTimeString(buf, simulator);
+        return buf;
     }
 }

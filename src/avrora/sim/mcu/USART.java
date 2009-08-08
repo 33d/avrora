@@ -35,10 +35,8 @@ package avrora.sim.mcu;
 import avrora.sim.*;
 import avrora.sim.state.*;
 import avrora.sim.output.SimPrinter;
-import avrora.sim.util.SimUtil;
 import cck.text.StringUtil;
 import cck.util.Arithmetic;
-import cck.util.Util;
 
 import java.util.LinkedList;
 
@@ -231,7 +229,7 @@ public class USART extends AtmelInternalDevice {
 
     void updatePeriod() {
         period = read16(UBRRnH_reg, UBRRnL_reg) + 1;
-        if ( devicePrinter.enabled )
+        if (devicePrinter != null)
             devicePrinter.println(properties.USART_name+": period set to "+period);
         period *= UBRRMultiplier;
     }
@@ -257,7 +255,7 @@ public class USART extends AtmelInternalDevice {
             public void fire() {
                 connectedDevice.receiveFrame(frame);
 
-                if (devicePrinter.enabled)
+                if (devicePrinter != null)
                     devicePrinter.println(properties.USART_name+": Transmitted frame " + frame);
                 transmitting = false;
                 UCSRnA_reg.TXC_flag.flag(true);
@@ -295,7 +293,7 @@ public class USART extends AtmelInternalDevice {
             public void fire() {
                 receiveFrame(frame);
 
-                if (devicePrinter.enabled)
+                if (devicePrinter != null)
                     devicePrinter.println(properties.USART_name+": Received frame " + frame + ' ' + UBRRnH_reg.read() + ' ' + UBRRnL_reg.read() + ' ' + UBRRMultiplier + ' ');
 
                 UCSRnA_reg.RXC_flag.flag(true);
@@ -428,7 +426,7 @@ public class USART extends AtmelInternalDevice {
             else if (_u2xn.getValue()) UBRRMultiplier = 8;
             else UBRRMultiplier = 16;
 
-            if ( devicePrinter.enabled )
+            if ( devicePrinter != null )
                 devicePrinter.println(properties.USART_name+": multiplier set to "+UBRRMultiplier);
         }
 
@@ -502,7 +500,7 @@ public class USART extends AtmelInternalDevice {
      */
     protected class SerialPrinter implements USARTDevice {
 
-        SimPrinter serialPrinter = SimUtil.getPrinter(simulator, "atmel.usart.printer");
+        SimPrinter serialPrinter = simulator.getPrinter("atmel.usart.printer");
 
         char[] stream = {'h', 'e', 'l', 'l', 'o', 'w', 'o', 'r', 'l', 'd'};
 
@@ -513,7 +511,7 @@ public class USART extends AtmelInternalDevice {
         }
 
         public void receiveFrame(Frame frame) {
-            if (serialPrinter.enabled) serialPrinter.println("Serial Printer " + frame.toString());
+            if (serialPrinter != null) serialPrinter.println("Serial Printer " + frame.toString());
         }
     }
 

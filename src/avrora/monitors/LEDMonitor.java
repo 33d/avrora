@@ -8,10 +8,12 @@ package avrora.monitors;
 
 import avrora.sim.Simulator;
 import avrora.sim.FiniteStateMachine;
+import avrora.sim.output.SimPrinter;
 import avrora.sim.platform.LED;
 import avrora.sim.platform.Platform;
 import avrora.sim.util.SimUtil;
 import cck.text.Terminal;
+import cck.text.Printer;
 
 /**
  * The <code>LEDMonitor</code> class implements a monitor that tracks any LEDs on
@@ -30,9 +32,11 @@ public class LEDMonitor extends MonitorFactory {
     protected class Mon implements Monitor, FiniteStateMachine.Probe {
 
         LED.LEDGroup ledgroup;
+        SimPrinter printer;
 
         public Mon(Simulator s) {
             Platform platform = s.getMicrocontroller().getPlatform();
+            printer = s.getPrinter();
             Object dev = platform.getDevice("leds");
             if (dev instanceof LED.LEDGroup) {
                 ledgroup = (LED.LEDGroup)dev;
@@ -50,16 +54,13 @@ public class LEDMonitor extends MonitorFactory {
         public void fireAfterTransition(int beforeState, int afterState) {
             if ( beforeState == afterState ) return;
             // print the status of the LED
-            synchronized ( Terminal.class ) {
-                // synchronize on the terminal to prevent interleaved output
-                Terminal.print(SimUtil.getIDTimeString(ledgroup.sim));
-                LED[] leds = ledgroup.leds;
-                for ( int cntr = 0; cntr < leds.length; cntr++ ) {
-                    if ( leds[cntr].getState() == 0 ) Terminal.print("off ");
-                    else Terminal.print(leds[cntr].colornum, "on  ");
-                }
-                Terminal.nextln();
+            StringBuffer buf = printer.getBuffer(30);
+            LED[] leds = ledgroup.leds;
+            for ( int cntr = 0; cntr < leds.length; cntr++ ) {
+                if ( leds[cntr].getState() == 0 ) buf.append("off ");
+                else Terminal.append(leds[cntr].colornum, buf, "on  ");
             }
+            printer.printBuffer(buf);
         }
 
         public void report() {

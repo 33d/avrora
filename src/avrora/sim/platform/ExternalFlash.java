@@ -38,6 +38,7 @@ package avrora.sim.platform;
 
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.Simulator;
+import avrora.sim.output.SimPrinter;
 import avrora.sim.clock.Clock;
 import avrora.sim.energy.Energy;
 import avrora.sim.mcu.Microcontroller;
@@ -63,6 +64,7 @@ public class ExternalFlash {
     protected final Simulator sim;
     protected final Clock clock;
     protected Microcontroller mcu;
+    protected final SimPrinter printer;
     private boolean isSelected;	// true if PA3 is 0
     private boolean isReading;		// mcu is reading from so of dataflash?
     private int dfOpcode;
@@ -90,8 +92,6 @@ public class ExternalFlash {
     public static final int DF_TPE = 8;
     public static final int DF_TBE = 12;
     public static final double DF_TXFR = 0.0003;
-
-    public static final boolean ECHO_EVENT = Verbose.getVerbosePrinter("mica2.flash").enabled;
 
     // names of the states of this device
     private static final String[] modeName = {"standby", "read", "write", "load"};
@@ -141,6 +141,7 @@ public class ExternalFlash {
         memory = new Memory();
         mcu = mcunit;
         sim = mcu.getSimulator();
+        printer = sim.getPrinter("mica2.flash");
         clock = sim.getClock();
         dfStatus = DF_STATUS_REGISTER_DENSITY | DF_STATUS_READY;
         tick = false;
@@ -643,18 +644,16 @@ public class ExternalFlash {
     }
 
     private void echo(String str) {
-        if (ECHO_EVENT) {
-            // print the status of the LED
-            synchronized (Terminal.class) {
-                // synchronize on the terminal to prevent interleaved output
-                Terminal.print(SimUtil.getIDTimeString(sim));
-                Terminal.print(Terminal.COLOR_BLUE, "Dataflash");
-                Terminal.println(": " + str);
-            }
+        if (printer != null) {
+            StringBuffer buf = printer.getBuffer(20);
+            Terminal.append(Terminal.COLOR_BLUE, buf, "Dataflash");
+            buf.append(": ");
+            buf.append(str);
+            printer.printBuffer(buf);
         }
     }
 
 }
-	
 
-	
+
+

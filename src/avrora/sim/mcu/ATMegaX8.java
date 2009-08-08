@@ -49,7 +49,7 @@ import java.util.HashMap;
  * @author Pekka Nikander
  * @author Bastian Schlich
  * @author John F. Schommer
- * 
+ *
  */
 public abstract class ATMegaX8 extends ATMegaFamilyNew {
 
@@ -216,7 +216,7 @@ public abstract class ATMegaX8 extends ATMegaFamilyNew {
 	rl.addIOReg("OSCCAL", 0x66);
 	rl.addIOReg("PRR",    0x64);
 	rl.addIOReg("CLKPR",  0x61);
-	rl.addIOReg("WDTCSR", 0x60);	
+	rl.addIOReg("WDTCSR", 0x60);
 
         // Low IO registers
         rl.addIOReg("SREG",   0x3F);
@@ -285,11 +285,11 @@ public abstract class ATMegaX8 extends ATMegaFamilyNew {
 
     }
 
-    public ATMegaX8(int id, AVRProperties props, ClockDomain cd, Program p, 
-		    int[][] transitionTimeMatrix) {
-        super(cd, props, 
+    public ATMegaX8(int id, Simulation sim, AVRProperties props, ClockDomain cd, Program p,
+                    int[][] transitionTimeMatrix) {
+        super(cd, props,
 	      new FiniteStateMachine(cd.getMainClock(), MODE_ACTIVE, idleModeNames, transitionTimeMatrix));
-        simulator = new Simulator(id, LegacyInterpreter.FACTORY, this, p);
+        simulator = sim.createSimulator(id, LegacyInterpreter.FACTORY, this, p);
         interpreter = (AtmelInterpreter)simulator.getInterpreter();
         MCUCR_reg = getIOReg("MCUCR");
         installPins();

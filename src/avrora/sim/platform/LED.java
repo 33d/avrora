@@ -34,6 +34,7 @@ package avrora.sim.platform;
 
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.Simulator;
+import avrora.sim.output.SimPrinter;
 import avrora.sim.clock.Clock;
 import avrora.sim.energy.Energy;
 import avrora.sim.mcu.Microcontroller;
@@ -71,6 +72,12 @@ public class LED implements Microcontroller.Pin.Output {
      * display changes to the state.
      */
     class LEDProbe implements FiniteStateMachine.Probe {
+        final SimPrinter printer;
+
+        LEDProbe() {
+            printer = sim.getPrinter();
+        }
+
         public void fireBeforeTransition(int beforeState, int afterState) {
             // do nothing
         }
@@ -78,12 +85,11 @@ public class LED implements Microcontroller.Pin.Output {
         public void fireAfterTransition(int beforeState, int afterState) {
             if ( beforeState == afterState ) return;
             // print the status of the LED
-            synchronized ( Terminal.class ) {
-                // synchronize on the terminal to prevent interleaved output
-                Terminal.print(SimUtil.getIDTimeString(sim));
-                Terminal.print(colornum, color);
-                Terminal.println(": " + modeName[afterState]);
-            }
+            StringBuffer buf = printer.getBuffer(20);
+            Terminal.append(colornum, buf, color);
+            buf.append(": ");
+            buf.append(modeName[afterState]);
+            printer.printBuffer(buf);
         }
     }
 

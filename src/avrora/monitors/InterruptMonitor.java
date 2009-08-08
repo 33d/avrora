@@ -33,6 +33,7 @@
 package avrora.monitors;
 
 import avrora.sim.*;
+import avrora.sim.output.SimPrinter;
 import avrora.sim.mcu.MCUProperties;
 import avrora.sim.util.SimUtil;
 import cck.stat.MinMaxMean;
@@ -62,6 +63,7 @@ public class InterruptMonitor extends MonitorFactory {
         final MCUProperties props;
         final Simulator simulator;
         final InterruptTable interrupts;
+        final SimPrinter printer;
         final long[] invocations;
         final long[] lastInvoke;
         final long[] lastPost;
@@ -73,6 +75,7 @@ public class InterruptMonitor extends MonitorFactory {
 
         Mon(Simulator s) {
             simulator = s;
+            printer = s.getPrinter();
             props = simulator.getMicrocontroller().getProperties();
             InterruptTable interruptTable = simulator.getInterpreter().getInterruptTable();
             interruptTable.insertProbe(this);
@@ -96,14 +99,14 @@ public class InterruptMonitor extends MonitorFactory {
         }
 
         private void print(String s, int inum) {
-            StringBuffer buf = new StringBuffer();
-            SimUtil.getIDTimeString(buf, simulator);
+
+            StringBuffer buf = printer.getBuffer();
             Terminal.append(Terminal.COLOR_GREEN, buf, s);
             if ( inum > 0) {
                 buf.append(": ");
                 Terminal.append(Terminal.COLOR_BRIGHT_CYAN, buf, "#"+inum+" ("+props.getInterruptName(inum)+")");
             }
-            Terminal.println(buf.toString());
+            printer.printBuffer(buf);
         }
 
         /**

@@ -35,6 +35,7 @@ package avrora.sim.mcu;
 import avrora.arch.avr.AVRProperties;
 import avrora.core.Program;
 import avrora.sim.FiniteStateMachine;
+import avrora.sim.Simulation;
 import avrora.sim.clock.ClockDomain;
 
 /**
@@ -46,7 +47,7 @@ import avrora.sim.clock.ClockDomain;
  * @author Pekka Nikander
  * @author Bastian Schlich
  * @author John F. Schommer
- * 
+ *
  */
 public class ATMega88 extends ATMegaX8 {
 
@@ -76,7 +77,7 @@ public class ATMega88 extends ATMegaX8 {
                 pinAssignments,	      // the assignment of names to physical pins
                 rl, // the assignment of names to IO registers
                 interruptAssignments);
-    }	
+    }
 
     public static class Factory implements MicrocontrollerFactory {
 
@@ -88,13 +89,13 @@ public class ATMega88 extends ATMegaX8 {
          * this hardware device and has been initialized with the
          * specified program.
          *
-         * @param p the program to load onto the microcontroller
-         * @return a <code>Microcontroller</code> instance that
+         * @param sim the simulation
+         * @param p the program to load onto the microcontroller @return a <code>Microcontroller</code> instance that
          *         represents the specific hardware device with the
          *         program loaded onto it
          */
-        public Microcontroller newMicrocontroller(int id, ClockDomain cd, Program p) {
-            return new ATMega88(id, cd, p);
+        public Microcontroller newMicrocontroller(int id, Simulation sim, ClockDomain cd, Program p) {
+            return new ATMega88(id, sim, cd, p);
         }
 
     }
@@ -104,11 +105,11 @@ public class ATMega88 extends ATMegaX8 {
         0, 0, 0, 1000, 1000, 0, 0, 6, 0
     };
 
-    private static final int[][] transitionTimeMatrix = 
+    private static final int[][] transitionTimeMatrix =
 	FiniteStateMachine.buildBimodalTTM(idleModeNames.length, 0, wakeupTimes, new int[wakeupTimes.length]);
 
-    public ATMega88(int id, ClockDomain cd, Program p) {
-        super(id, props, cd, p, transitionTimeMatrix);
+    public ATMega88(int id, Simulation sim, ClockDomain cd, Program p) {
+        super(id, sim, props, cd, p, transitionTimeMatrix);
     }
 
 }

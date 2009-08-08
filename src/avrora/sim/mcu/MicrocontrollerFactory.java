@@ -34,6 +34,7 @@ package avrora.sim.mcu;
 
 import avrora.core.Program;
 import avrora.sim.clock.ClockDomain;
+import avrora.sim.Simulation;
 
 /**
  * The <code>MicrocontrollerFactory</code> interface is implemented by a class that is capable of making
@@ -48,10 +49,10 @@ public interface MicrocontrollerFactory {
      * particular program. It will construct an instance of the <code>Simulator</code> class that has all the
      * properties of this hardware device and has been initialized with the specified program.
      *
-     * @param p the program to load onto the microcontroller
-     * @return a <code>Microcontroller</code> instance that represents the specific hardware device with the
+     * @param sim the simulation
+     * @param p the program to load onto the microcontroller @return a <code>Microcontroller</code> instance that represents the specific hardware device with the
      *         program loaded onto it
      */
-    public Microcontroller newMicrocontroller(int id, ClockDomain cd, Program p);
+    public Microcontroller newMicrocontroller(int id, Simulation sim, ClockDomain cd, Program p);
 
 }

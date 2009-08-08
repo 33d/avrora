@@ -34,6 +34,7 @@ package avrora.sim.platform;
 
 import avrora.core.Program;
 import avrora.sim.Simulator;
+import avrora.sim.Simulation;
 import avrora.sim.clock.ClockDomain;
 import avrora.sim.mcu.ATMega128;
 import avrora.sim.mcu.Microcontroller;
@@ -61,11 +62,11 @@ public class Seres extends Platform {
 
     public static class Factory implements PlatformFactory {
 
-        public Platform newPlatform(int id, Program p) {
+        public Platform newPlatform(int id, Simulation sim, Program p) {
             ClockDomain cd = new ClockDomain(7372800);
             cd.newClock("external", 32768);
 
-            return new Seres(new ATMega128(id, cd, p));
+            return new Seres(new ATMega128(id, sim, cd, p));
         }
     }
 

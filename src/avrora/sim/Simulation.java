@@ -34,16 +34,18 @@ package avrora.sim;
 
 import avrora.Defaults;
 import avrora.core.LoadableProgram;
+import avrora.core.Program;
 import avrora.monitors.MonitorFactory;
 import avrora.sim.clock.Synchronizer;
-import avrora.sim.mcu.MicrocontrollerFactory;
-import avrora.sim.mcu.AtmelMicrocontroller;
-import avrora.sim.mcu.EEPROM;
+import avrora.sim.mcu.*;
 import avrora.sim.platform.*;
 import avrora.sim.util.ClockCycleTimeout;
 import avrora.sim.util.InterruptScheduler;
+import avrora.sim.output.SimPrinter;
 import cck.help.HelpCategory;
 import cck.util.*;
+import cck.text.Verbose;
+
 import java.util.*;
 import java.io.*;
 
@@ -151,7 +153,7 @@ public abstract class Simulation extends HelpCategory {
          */
         protected void instantiate() {
             // create the simulator object
-            platform = platformFactory.newPlatform(id, path.getProgram());
+            platform = platformFactory.newPlatform(id, Simulation.this, path.getProgram());
             simulator = platform.getMicrocontroller().getSimulator();
             processTimeout();
             processInterruptSched();
@@ -213,7 +215,10 @@ public abstract class Simulation extends HelpCategory {
                     }
 
                     image = new byte[f.available()];
-                    f.read(image);
+                    int i = 0;
+                    while (i < image.length) {
+                        i += f.read(image, i, image.length - i);
+                    }
                     f.close();
 
                 } catch (IOException e) {
@@ -329,6 +334,21 @@ public abstract class Simulation extends HelpCategory {
      * @throws Exception if any type of exception occurs during this processing (e.g. FileNotFound)
      */
     public abstract void process(Options o, String[] args) throws Exception;
+
+    public Simulator createSimulator(int id, InterpreterFactory f, Microcontroller mcu, Program p) {
+        return new Simulator(id, this, f, mcu, p);
+    }
+
+    public SimPrinter getPrinter(Simulator s, String category) {
+        if (Verbose.isVerbose(category)) {
+            return new SimPrinter(s, category);
+        }
+        return null;
+    }
+
+    public SimPrinter getPrinter(Simulator s) {
+        return new SimPrinter(s, "");
+    }
 
     /**
      * The <code>createNode()</code> method creates a new node in the simulation with the specified

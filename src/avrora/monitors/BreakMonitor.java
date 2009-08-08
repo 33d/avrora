@@ -38,7 +38,7 @@ import avrora.core.Program;
 import avrora.core.SourceMapping;
 import avrora.sim.Simulator;
 import avrora.sim.State;
-import avrora.sim.util.SimUtil;
+import avrora.sim.output.SimPrinter;
 import cck.text.StringUtil;
 import cck.text.Terminal;
 
@@ -55,13 +55,14 @@ public class BreakMonitor extends MonitorFactory {
 
     public class Mon implements Monitor {
         public final Simulator simulator;
+        public final SimPrinter printer;
         public final CallTrace trace;
         public final CallStack stack;
         private final SourceMapping sourceMap;
 
         Mon(Simulator s) {
             simulator = s;
-
+            printer = s.getPrinter();
             trace = new CallTrace(s);
             stack = new CallStack();
             trace.attachMonitor(stack);
@@ -78,29 +79,17 @@ public class BreakMonitor extends MonitorFactory {
         public class BreakProbe extends Simulator.Probe.Empty {
 
             public void fireBefore(State state, int pc) {
-                String idstr = SimUtil.getIDTimeString(simulator);
-                Terminal.print(idstr);
-                Terminal.print("break instruction @ ");
-                Terminal.printBrightCyan(StringUtil.addrToString(pc));
-                Terminal.print(", r30:r31 = ");
                 LegacyState s = (LegacyState) simulator.getState();
+
+                StringBuffer buf = printer.getBuffer();
+                buf.append("break instruction @ ");
+                Terminal.append(Terminal.COLOR_CYAN, buf, StringUtil.addrToString(pc));
+                buf.append(", r30:r31 = ");
                 int v = s.getRegisterWord(LegacyRegister.getRegisterByNumber(30));
-                Terminal.printGreen(StringUtil.to0xHex(v, 4));
-                Terminal.nextln();
+                Terminal.append(Terminal.COLOR_GREEN, buf, StringUtil.to0xHex(v, 4));
+                printer.printBuffer(buf);
 
-                printStack(idstr);
-            }
-        }
-
-        private void printStack(String idstr) {
-            int depth = stack.getDepth();
-            for (int cntr = depth - 1; cntr >= 0; cntr--) {
-                Terminal.print(idstr);
-                Terminal.print("      @ ");
-                int inum = stack.getInterrupt(cntr);
-                if ( inum >= 0 ) Terminal.printRed("#"+inum + ' ');
-                Terminal.printGreen(sourceMap.getName(stack.getTarget(cntr)));
-                Terminal.nextln();
+                stack.printStack(printer, sourceMap);
             }
         }
 

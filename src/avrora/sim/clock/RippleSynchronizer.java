@@ -38,7 +38,7 @@ public class RippleSynchronizer extends Synchronizer {
     protected WaitLink waitListHead;
 
     /**
-     * The constructor for the <code>IntervalSynchronizer</code> class creates a new synchronizer
+     * The constructor for the <code>RippleSynchronizer</code> class creates a new synchronizer
      * with the specified period, that will fire the specified event each time all threads meet at
      * a synchronization point.
      * @param p the period in clock cycles which to synchronize the threads
@@ -119,7 +119,7 @@ public class RippleSynchronizer extends Synchronizer {
             time = t;
         }
     }
-    
+
     private WaitLink advance(long time, WaitLink link) {
         assert time >= link.time;
         if (time == link.time) {
@@ -129,16 +129,14 @@ public class RippleSynchronizer extends Synchronizer {
         for ( link = link.next; ; link = link.next ) {
             // if we are in-between links, create a new link
             assert link != null;
-            if ( time < link.time) {
+            if (time < link.time) {
                 // we met a link that has a greater time than this one.
                 WaitLink nlink = new WaitLink(time);
                 nlink.numPassed = link.numPassed;
                 nlink.next = link;
 
-                if (prev != null) {
-                    assert prev.next == link;
-                    prev.next = nlink;
-                }
+                assert prev.next == link;
+                prev.next = nlink;
                 notifyLink(nlink);
                 return nlink;
             } else if (time == link.time) {
@@ -289,10 +287,11 @@ public class RippleSynchronizer extends Synchronizer {
     public synchronized void removeNode(Simulation.Node t) {
         // don't try to remove a thread that's not here!
         SimulatorThread st = t.getThread();
-        if ( !threadMap.containsKey(st) ) return;
-        synchronized (this) {
-            goal--;
-            this.notifyAll();
+        if (threadMap.containsKey(st)) {
+            synchronized (this) {
+                goal--;
+                this.notifyAll();
+            }
         }
     }
 
