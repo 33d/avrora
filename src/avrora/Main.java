@@ -66,6 +66,9 @@ public class Main {
     public static final Option.Bool STATUS = mainOptions.newOption("status", true,
             "This option enables and disables printing of status information, for example " +
             "when the simulator is loading a program.");
+    public static final Option.Bool STATUS_TIMING = mainOptions.newOption("status-timing", false,
+            "This option enables and disables printing of timing with status information, for " +
+            "example when the simulator is loading a program.");
     public static final Option.List VERBOSE = mainOptions.newOptionList("verbose", "",
             "This option allows users to enable verbose printing of individual " +
             "subsystems within Avrora. A list can be given with individual items separated " +
@@ -321,6 +324,7 @@ public class Main {
         Terminal.useColors = COLORS.get();
         Terminal.htmlColors = HTML.get();
         Status.ENABLED = STATUS.get();
+        Status.TIMING = STATUS_TIMING.get();
         List verbose = VERBOSE.get();
         Iterator i = verbose.iterator();
         while (i.hasNext())

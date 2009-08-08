@@ -59,6 +59,7 @@ public class Status {
     static boolean inside = false;
 
     public static boolean ENABLED = true;
+    public static boolean TIMING = true;
 
     /**
      * The <code>begin()</code> method prints a new line with the new status. For example,
@@ -98,13 +99,17 @@ public class Status {
         if (i != null) {
             time = System.currentTimeMillis() - i.starttime;
         }
-        Terminal.print("[");
-        Terminal.print(color, s);
-        if (time >= 0) {
-            Terminal.print(": ");
-            Terminal.print(TimeUtil.milliToSecs(time) + " seconds");
+        if (TIMING) {
+            Terminal.print("[");
         }
-        Terminal.print("]");
+        Terminal.print(color, s);
+        if (TIMING) {
+            if (time >= 0) {
+                Terminal.print(": ");
+                Terminal.print(TimeUtil.milliToSecs(time) + " seconds");
+            }
+            Terminal.print("]");
+        }
         Terminal.nextln();
         inside = false;
     }
