@@ -221,6 +221,12 @@ public abstract class Timer8Bit extends AtmelInternalDevice {
                 if (period != 0) {
                     timerClock.insertEvent(ticker, period);
                 }
+                if (devicePrinter != null) {
+                  if (period != 0)
+                    devicePrinter.println("Timer" + n + " enabled: period = " + period + " mode = " + mode);
+                  else
+                    devicePrinter.println("Timer" + n + " disabled");
+                }
             }
         }
 
@@ -236,7 +242,8 @@ public abstract class Timer8Bit extends AtmelInternalDevice {
             if (count == compare) {
                 switch (COMn.getValue()) {
                     case 1:
-                        outputComparePin.write(!outputComparePin.read()); // toggle
+                        if (WGMn.getValue() == MODE_NORMAL || WGMn.getValue() == MODE_CTC)
+                          outputComparePin.write(!outputComparePin.read()); // toggle
                         break;
                     case 2:
                         outputComparePin.write(false); // clear
@@ -252,64 +259,83 @@ public abstract class Timer8Bit extends AtmelInternalDevice {
 
     class Mode_Normal implements Simulator.Event {
         public void fire() {
-            int ncount = 1 + (TCNTn_reg.read() & 0xff);
-            int ocount = ncount;
-            if (ncount == MAX) {
+            int ncount = (int)TCNTn_reg.read() & 0xff;
+            tickerStart(ncount);
+            if (ncount >= MAX) {
                 overflow();
-                ncount = 0;
+                ncount = BOTTOM;
             }
-            tickerFinish(this, ncount, ocount);
+            else {
+                ncount++;
+            }
+            tickerFinish(this, ncount);
         }
     }
 
     class Mode_PWM implements Simulator.Event {
         protected byte increment = 1;
         public void fire() {
-            int ncount = increment + (TCNTn_reg.read() & 0xff);
-            int ocount = ncount;
+            int ncount = (int)TCNTn_reg.read() & 0xff;
+            tickerStart(ncount);
             if (ncount >= MAX) {
                 increment = -1;
                 ncount = MAX;
                 OCRn_reg.flush(); // pg. 102. update OCRn at TOP
             }
-            if (ncount <= 0) {
+            else if (ncount <= BOTTOM) {
                 overflow();
                 increment = 1;
-                ncount = 0;
+                ncount = BOTTOM;
             }
-            tickerFinish(this, ncount, ocount);
+            ncount += increment;
+            tickerFinish(this, ncount);
         }
     }
 
     class Mode_CTC implements Simulator.Event {
         public void fire() {
-            int ncount = 1 + (TCNTn_reg.read() & 0xff);
-            int ocount = ncount;
-            if (ocount == (OCRn_reg.read() & 0xff)) {
-                ncount = 0;
+            int ncount = (int)TCNTn_reg.read() & 0xff;
+            tickerStart(ncount);
+            if (ncount == ((int)OCRn_reg.read() & 0xff)) {
+                ncount = BOTTOM;
             }
-            tickerFinish(this, ncount, ocount);
+            else if (ncount >= MAX) {
+                overflow();
+                ncount = BOTTOM;
+            }
+            else {
+                ncount++;
+            }
+            tickerFinish(this, ncount);
         }
     }
 
     class Mode_FastPWM implements Simulator.Event {
         public void fire() {
-            int ncount = 1 + (TCNTn_reg.read() & 0xff);
-            int ocount = ncount;
-            if (ncount == MAX) {
-                ncount = 0;
+            // TODO: OCn handling
+            int ncount = (int)TCNTn_reg.read() & 0xff;
+            tickerStart(ncount);
+            if (ncount >= MAX) {
+                ncount = BOTTOM;
                 overflow();
                 OCRn_reg.flush(); // pg. 102. update OCRn at TOP
             }
-            tickerFinish(this, ncount, ocount);
+            else {
+                ncount++;
+            }
+            tickerFinish(this, ncount);
         }
     }
-
-    private void tickerFinish(Simulator.Event ticker, int ncount, int ocount) {
-        if (!blockCompareMatch && ocount == (OCRn_reg.read() & 0xff)) {
-            compareMatch();
-        }
+    
+    private void tickerStart(int count) {
+      if (!blockCompareMatch && count == ((int)OCRn_reg.read() & 0xff)) {
+          compareMatch();
+      }
+    }
+    
+    private void tickerFinish(Simulator.Event ticker, int ncount) {
         TCNTn_reg.write((byte)ncount);
+        // previous write sets the compare, so reset it now
         blockCompareMatch = false;
 
         timerClock.insertEvent(ticker, period);

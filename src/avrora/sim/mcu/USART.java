@@ -417,10 +417,14 @@ public class USART extends AtmelInternalDevice {
         }
 
         public void write(byte val) {
-            value = (byte)(val & 0x3);
-            RXC_flag.sync();
+            // bits 0 and 1 are R/W, all others read only. writing a 1 to bit 6 clears it.
+            if ((val & 0x40) == 1)
+              value &= 0xBF;
+            value = (byte)((value & 0xFC) | (val & 0x3));
+            // since RCX and UDRE cannot be changed, no sync is necessary
+//            RXC_flag.sync();
             TXC_flag.sync();
-            UDRE_flag.sync();
+//            UDRE_flag.sync();
 
             if (UCSRnC_reg._umsel.getValue() == 1) UBRRMultiplier = 2;
             else if (_u2xn.getValue()) UBRRMultiplier = 8;

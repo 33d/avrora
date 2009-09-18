@@ -113,6 +113,8 @@ public class MicaZ extends Platform {
         mcu.getPin(31).connectInput(radio.CCA_pin);
         mcu.getPin(29).connectInput(radio.SFD_pin);
         mcu.getPin(10).connectOutput(radio.CS_pin);
+        mcu.getPin("PA5").connectOutput(radio.VREN_pin);
+        mcu.getPin("PA6").connectOutput(radio.RSTN_pin);
         ADC adc = (ADC)amcu.getDevice("adc");
         adc.connectADCInput(radio.adcInterface, 0);
         SPI spi = (SPI)amcu.getDevice("spi");

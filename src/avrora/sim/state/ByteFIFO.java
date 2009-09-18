@@ -49,6 +49,9 @@ public class ByteFIFO {
     protected int head;
     protected int used;
 
+    protected int save_head;
+    protected int save_used;
+  
     protected boolean underflow;
     protected boolean overflow;
 
@@ -163,19 +166,24 @@ public class ByteFIFO {
         overflow = false;
         underflow = false;
     }
+
+    public void saveState() {
+      save_head = head;
+      save_used = used;
+    }
     
     public void refill() {
         overflow = false;
         underflow = false;
-        head = 0;
-        used = 0;        
+        head = save_head;
+        used = save_used;        
     }
 
     public void clear() {
         overflow = false;
         underflow = false;
-        head = 0;
-        used = 0;
+        save_head = head = 0;
+        save_used = used = 0;
         Arrays.fill(data, (byte) 0);
     }
 

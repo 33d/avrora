@@ -463,13 +463,16 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
 
     protected class Mode_Normal implements Simulator.Event {
         public void fire() {
-            int ncount = read16(TCNTnH_reg, TCNTnL_reg) + 1;
-            int ocount = ncount;
-            if (ncount == MAX) {
+            int ncount = read16(TCNTnH_reg, TCNTnL_reg);
+            tickerStart(ncount);
+            if (ncount >= MAX) {
                 overflow();
-                ncount = 0;
+                ncount = BOTTOM;
             }
-            tickerFinish(this, ocount, ncount);
+            else {
+                ncount++;
+            }
+            tickerFinish(this, ncount);
         }
     }
 
@@ -483,17 +486,19 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
         }
 
         public void fire() {
-            int ncount = read16(TCNTnH_reg, TCNTnL_reg) + 1;
-            int ocount = ncount;
-            if (compareRegHigh != null) {
-                if (ncount == read16(compareRegHigh, compareRegLow)) {
-                    ncount = 0;
-                }
+            int ncount = read16(TCNTnH_reg, TCNTnL_reg);
+            tickerStart(ncount);
+            if (compareRegHigh != null && ncount == read16(compareRegHigh, compareRegLow)) {
+                ncount = BOTTOM;
             }
-            if (ncount == MAX) {
+            else if (ncount >= MAX) {
                 overflow();
+                ncount = BOTTOM;
             }
-            tickerFinish(this, ocount, ncount);
+            else {
+                ncount++;
+            }
+            tickerFinish(this, ncount);
         }
     }
 
@@ -508,18 +513,25 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
             compareRegLow = compareRegL;
         }
         public void fire() {
-            int ncount = read16(TCNTnH_reg, TCNTnL_reg) + 1;
+            int ncount = read16(TCNTnH_reg, TCNTnL_reg);
+            tickerStart(ncount);
             int top = this.top;
-            int ocount = ncount;
             if (compareRegHigh != null) {
                 top = read16(compareRegHigh, compareRegLow);
             }
             if (ncount == top) {
-                ncount = 0;
+                ncount = BOTTOM;
                 overflow();
                 flushOCRnx();
             }
-            tickerFinish(this, ocount, ncount);
+            else if (ncount >= MAX) {
+                overflow(); // ??? not clear according to the spec if there is an overflow here
+                ncount = BOTTOM;
+            }
+            else {
+                ncount++;
+            }
+            tickerFinish(this, ncount);
         }
     }
 
@@ -533,23 +545,28 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
             compareRegLow = compareRegL;
         }
         public void fire() {
-            int ncount = read16(TCNTnH_reg, TCNTnL_reg) + increment;
-
-            int ocount = ncount;
+            int ncount = read16(TCNTnH_reg, TCNTnL_reg);
+            tickerStart(ncount);
+            
+            int compare = MAX;
             if (compareRegHigh != null) {
-                int compare = read16(compareRegHigh, compareRegLow);
-                if (ncount >= compare) {
-                    increment = -1;
-                    ncount = compare;
-                }
+                compare = read16(compareRegHigh, compareRegLow);
             }
-            if (ncount <= 0) {
+            
+            if (ncount == compare) {
+                increment = -1;
+            }
+            else if (ncount <= BOTTOM) {
                 overflow();
                 flushOCRnx();
                 increment = 1;
-                ncount = 0;
+                ncount = BOTTOM;
             }
-            tickerFinish(this, ocount, ncount);
+            else if (ncount >= MAX) {  // this is not defined in the spec
+                ncount = BOTTOM-1;
+            }
+            ncount += increment;
+            tickerFinish(this, ncount);
         }
     }
 
@@ -565,35 +582,42 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
             compareRegLow = compareRegL;
         }
         public void fire() {
-            int ncount = read16(TCNTnH_reg, TCNTnL_reg) + increment;
+            int ncount = read16(TCNTnH_reg, TCNTnL_reg);
+            tickerStart(ncount);
+          
             int top = this.top;
-
-            int ocount = ncount;
             if (compareRegHigh != null) {
                 top = read16(compareRegHigh, compareRegLow);
             }
-            if (ncount >= top) {
+            
+            if (ncount == top) {
                 increment = -1;
-                ncount = top;
                 flushOCRnx();
             }
-            if (ncount <= 0) {
+            else if (ncount <= BOTTOM) {
                 overflow();
                 increment = 1;
-                ncount = 0;
+                ncount = BOTTOM;
             }
-            tickerFinish(this, ocount, ncount);
+            else if (ncount >= MAX) {  // this is not defined in the spec
+                ncount = BOTTOM-1;
+            }
+            ncount += increment;
+            tickerFinish(this, ncount);
         }
     }
 
-    private void tickerFinish(Simulator.Event ticker, int ocount, int ncount) {
+    private void tickerStart(int count) {
         // the compare match should be performed in any case.
         if (!blockCompareMatch) {
             for ( int cntr = 0; cntr < compareUnits.length; cntr++ )
-                compareUnits[cntr].compare(ocount);
+                compareUnits[cntr].compare(count);
         }
+    }
+    
+    private void tickerFinish(Simulator.Event ticker, int ncount) {
         write16(ncount, TCNTnH_reg, TCNTnL_reg);
-        // make sure timings on this are correct
+        // previous write sets the compare, so reset it now
         blockCompareMatch = false;
 
         if (period != 0) timerClock.insertEvent(ticker, period);
