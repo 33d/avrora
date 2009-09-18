@@ -115,6 +115,7 @@ public class CC2420Radio implements Radio {
     private static final int RAMSECURITYBANK_SIZE = 113;
 
     private static final int XOSC_START_TIME = 1000;// oscillator start time
+    private static final int PLL_LOCK_TIME = 192;// for startup and turnaround times
 
     //-- Simulation objects -----------------------------------------------
     protected final Microcontroller mcu;
@@ -138,6 +139,8 @@ public class CC2420Radio implements Radio {
     // simplify the handling of radio states and state transitions.
     protected final Register statusRegister = new Register(8);
     protected boolean startingOscillator;
+    protected boolean TXstartingUp;
+    protected boolean RXstartingUp;
     protected boolean SRXDEC_switched;
     protected boolean STXENC_switched;
 
@@ -166,6 +169,8 @@ public class CC2420Radio implements Radio {
     public final CC2420Pin MISO_pin = new CC2420Pin("MISO");
     public final CC2420Pin MOSI_pin = new CC2420Pin("MOSI");
     public final CC2420Pin CS_pin = new CC2420Pin("CS");
+    public final CC2420Pin VREN_pin = new CC2420Pin("VREN");
+    public final CC2420Pin RSTN_pin = new CC2420Pin("RSTN");
     public final CC2420Output FIFO_pin = new CC2420Output("FIFO", new BooleanRegister());
     public final CC2420Output FIFOP_pin = new CC2420Output("FIFOP", new BooleanRegister());
     public final CC2420Output CCA_pin = new CC2420Output("CCA", CCA_assessor);
@@ -298,7 +303,6 @@ public class CC2420Radio implements Radio {
 
         transmitter.endTransmit();
         receiver.endReceive();
-        stateMachine.transition(1);//change to power down state
     }
 
     public void setSFDView(BooleanView sfd) {
@@ -340,6 +344,7 @@ public class CC2420Radio implements Radio {
             case MAIN:
                 if ((val & 0x8000) != 0) {
                     reset();
+                    stateMachine.transition(1);//change to power down state
                 }
                 break;
             case IOCFG1:
@@ -400,6 +405,7 @@ public class CC2420Radio implements Radio {
                 stateMachine.transition(2);//change to idle state
                 break;
             case SXOSCOFF:
+                oscStable.setValue(false);
                 stateMachine.transition(1);//change to power down state
                 break;
             case SFLUSHRX:
@@ -693,8 +699,8 @@ public class CC2420Radio implements Radio {
             if (printer != null) {
                 printer.println("CC2420 new SPI frame exchange " + StringUtil.toMultirepString(frame.data, 8));
             }
-            if (!CS_pin.level) {
-                // configuration requires CS pin to be held low
+            if (!CS_pin.level && VREN_pin.level && RSTN_pin.level) {
+                // configuration requires CS pin to be held low, and VREN pin and RSTN pin to be held high
                 return SPI.newFrame(receiveConfigByte(frame.data));
             } else {
                 return SPI.newFrame((byte) 0);
@@ -718,6 +724,42 @@ public class CC2420Radio implements Radio {
         configByteCnt = 0;
     }
 
+    private void pinChange_VREN(boolean level) {
+      if (level) {
+        // the voltage regulator has been switched on 
+        if (stateMachine.getCurrentState() == 0) {
+          // actually, there is a startup time for the voltage regulator
+          // but we assume here that it starts immediately
+          stateMachine.transition(1);//change to power down state
+          if (printer != null) {
+            printer.println("CC2420 Voltage Regulator started");
+          }
+        }
+      }
+      else {
+        if (stateMachine.getCurrentState() > 0) {
+          // switch the chip off, but stop all things first
+          transmitter.endTransmit();
+          receiver.endReceive();
+          stateMachine.transition(0);//change to off state
+          if (printer != null) {
+            printer.println("CC2420 Voltage Regulator switched off");
+          }
+        }
+      }
+    }
+
+    private void pinChange_RSTN(boolean level) {
+      if (!level) {
+        // high->low indicates reset
+        reset();
+        stateMachine.transition(1);//change to power down state
+        if (printer != null) {
+          printer.println("CC2420 reset by pin");
+        }
+      }
+    }
+    
     private static final int TX_IN_PREAMBLE = 0;
     private static final int TX_SFD_1 = 1;
     private static final int TX_SFD_2 = 2;
@@ -733,6 +775,7 @@ public class CC2420Radio implements Radio {
         protected int counter;
         protected int length;
         protected char crc;
+        protected boolean wasAck;
 
         public Transmitter(Medium m) {
             super(m, sim.getClock());
@@ -757,8 +800,11 @@ public class CC2420Radio implements Radio {
                     break;
                 case TX_LENGTH:
                     if (SendAck || SendAckPend) {//ack frame
+                        wasAck = true;
                         length = 5;
                     } else {//data frame
+                        wasAck = false;
+                        txFIFO.saveState();  // save FIFO state for later refill
                         length = txFIFO.remove() & 0x7f;
                     }
                     state = TX_IN_PACKET;
@@ -770,10 +816,18 @@ public class CC2420Radio implements Radio {
                 case TX_IN_PACKET:
                     if (!SendAck && !SendAckPend) {//data frame
                         if (txFIFO.empty()) {
+                            if (printer != null) {
+                              printer.println("txFIFO underflow");
+                            }
                             // a transmit underflow has occurred. set the flag and stop transmitting.
                             txUnderflow.setValue(true);
                             val = 0;
                             state = TX_END;
+                            // SFD is also set to inactive when an underflow occurs
+                            SFD_value.setValue(!SFD_active);
+                            // auto transition back to receive mode.                    
+                            shutdown();
+                            receiver.startup();// auto transition back to receive mode.
                             break;
                         }
                         //  no underflow occurred.
@@ -822,10 +876,12 @@ public class CC2420Radio implements Radio {
                     state = TX_END;
                     counter = 0;
                     SFD_value.setValue(!SFD_active);
-                    //After complete tx of data frame the txFIFO is automatically refilled
-                    txFIFO.refill();
-                    //writing txFIFO after frame transmitted will cause it to be flushed
-                    setClearFlag();
+                    if (!wasAck) {  //data frame only
+                      //After complete tx of data frame the txFIFO is automatically refilled
+                      txFIFO.refill();
+                      //writing txFIFO after frame transmitted will cause it to be flushed
+                      setClearFlag();
+                    }
                     // auto transition back to receive mode.
                     shutdown();
                     receiver.startup();// auto transition back to receive mode.
@@ -847,14 +903,23 @@ public class CC2420Radio implements Radio {
             return val + 1;
         }
 
-        void startup() {
-            stateMachine.transition((readRegister(TXCTRL) & 0x1f)+4);//change to Tx(Level) state
-            if (!txActive.getValue()){
-                txActive.setValue(true);
-                state = TX_IN_PREAMBLE;
-                beginTransmit(getPower(),getFrequency());
-            }
-        }
+        void startup() {            
+            if (!txActive.getValue() && !TXstartingUp){                            
+            TXstartingUp = true;
+                sim.insertEvent(new Simulator.Event() {
+                    public void fire() {                    
+                        TXstartingUp = false;                    
+                        stateMachine.transition((readRegister(TXCTRL) & 0x1f)+4);//change to Tx(Level) state
+                        txActive.setValue(true);
+                        state = TX_IN_PREAMBLE;
+                        beginTransmit(getPower(),getFrequency());
+                        if (printer != null) {
+                            printer.println("TX Started Up");
+                        }
+                    }
+                }, toCycles(PLL_LOCK_TIME));
+           }
+       }         
 
         void shutdown() {
             stateMachine.transition(2);//change to idle state
@@ -1049,6 +1114,10 @@ public class CC2420Radio implements Radio {
                             rxFIFO.clear();
                         }
                     }
+                    else {
+                      // sequence number - save it outside of address recognition since it is needed for SACK/SACKPEND commands as well!!!
+                      if (counter == 3 && (rxFIFO.peek(1) & 0x07) != 0 && (rxFIFO.peek(1) & 0x04) != 4) DSN = b;
+                    }
 
                     break;
                 case RECV_CRC_1:
@@ -1159,9 +1228,18 @@ public class CC2420Radio implements Radio {
         }
 
         void startup() {
-            stateMachine.transition(3);//change to receive state
-            state = RECV_SFD_SCAN;
-            beginReceive(getFrequency());
+            if (!RXstartingUp){
+                RXstartingUp = true;
+                sim.insertEvent(new Simulator.Event() {               
+                    public void fire() {                    
+                        stateMachine.transition(3);//change to receive state
+                        state = RECV_SFD_SCAN;
+                        beginReceive(getFrequency());
+                        RXstartingUp = false;
+                        if (printer!=null) printer.println("RX Started Up");
+                    }
+                }, toCycles(PLL_LOCK_TIME));
+            }           
         }
 
         void shutdown() {
@@ -1190,6 +1268,8 @@ public class CC2420Radio implements Radio {
                 // level changed
                 this.level = level;
                 if (this == CS_pin) pinChange_CS(level);
+                else if (this == VREN_pin) pinChange_VREN(level);
+                else if (this == RSTN_pin) pinChange_RSTN(level);
                 if (printer != null) {
                     printer.println("CC2420 Write pin " + name + " -> " + level);
                 }
