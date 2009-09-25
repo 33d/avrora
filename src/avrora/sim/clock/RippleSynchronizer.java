@@ -288,6 +288,7 @@ public class RippleSynchronizer extends Synchronizer {
         // don't try to remove a thread that's not here!
         SimulatorThread st = t.getThread();
         if (threadMap.containsKey(st)) {
+          waitForNeighbors(t.getSimulator().getClock().getCount());
             synchronized (this) {
                 goal--;
                 this.notifyAll();
