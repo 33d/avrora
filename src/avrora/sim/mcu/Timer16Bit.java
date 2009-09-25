@@ -69,6 +69,8 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
     public static final int MAX = 0xffff;
     public static final int BOTTOM = 0x0000;
 
+    final RegisterSet.Field ICESn_flag;
+    
     public class InputCapturePin implements BooleanView {
         boolean level;
 
@@ -79,7 +81,9 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
         public void setValue(boolean v) {
             if (v != level) {
                 level = v;
-                captureInput();
+                // the ICESn (input capture edge select) bit determines if a rising (1) or falling (0) edge is used as trigger
+                if ((ICESn_flag.value == 1) == level)
+                  captureInput();
             }
         }
     }
@@ -98,8 +102,9 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
         final RegisterSet.Field force;
         final char unit;
         final int flagBit;
+        final ATMegaFamily.FlagRegister flagReg;
 
-        OutputCompareUnit(Microcontroller m, RegisterSet rset, char c, int fb) {
+        OutputCompareUnit(Microcontroller m, RegisterSet rset, char c, int fb, ATMegaFamily.FlagRegister fr) {
             unit = c;
             OCRnXH_reg = new BufferedRegister();
             OCRnXL_reg = new BufferedRegister();
@@ -108,6 +113,7 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
             mode = rset.getField("COM"+n+c);
             force = rset.installField("FOC"+n+c, new FOC_Field());
             flagBit = fb;
+            flagReg = fr;
 
             installIOReg("OCR"+n+unit+"H", new OCRnxTempHighRegister(OCRnXH_reg));
             installIOReg("OCR"+n+unit+"L", OCRnX_reg);
@@ -135,7 +141,7 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
         void compare(int count) {
             if ( count == read() ) {
                 output();
-                xTIFR_reg.flagBit(flagBit);
+                flagReg.flagBit(flagBit);
             }
         }
 
@@ -209,8 +215,12 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
 
     int inputCaptureInterrupt;
 
+    // general timer/count interrupt flag and mask register
     protected ATMegaFamily.FlagRegister xTIFR_reg;
     protected ATMegaFamily.MaskRegister xTIMSK_reg;
+    // for OCIE1C and OCF1C a different register can be set in ATMega128
+    protected ATMegaFamily.FlagRegister cTIFR_reg;
+    protected ATMegaFamily.MaskRegister cTIMSK_reg;
 
     protected int[] periods;
 
@@ -242,9 +252,9 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
         highTempReg = new RWRegister();
 
         compareUnits = new OutputCompareUnit[numUnits];
-        newOCU(0, numUnits, m, rset, 'A', OCFnA);
-        newOCU(1, numUnits, m, rset, 'B', OCFnB);
-        newOCU(2, numUnits, m, rset, 'C', OCFnC);
+        newOCU(0, numUnits, m, rset, 'A', OCFnA, xTIFR_reg);
+        newOCU(1, numUnits, m, rset, 'B', OCFnB, xTIFR_reg);
+        newOCU(2, numUnits, m, rset, 'C', OCFnC, cTIFR_reg);  // OCFnC can have a different register!
 
         TCNTnH_reg = new RWRegister();
         TCNTnL_reg = new TCNTnRegister();
@@ -254,6 +264,8 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
         ICRnL_reg = new RWRegister();
         ICRn_reg = new PairedRegister(ICRnL_reg, ICRnH_reg);
 
+        ICESn_flag = rset.getField("ICES"+n);
+        
         externalClock = m.getClock("external");
         timerClock = mainClock;
 
@@ -300,9 +312,9 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
         interpreter.getInterruptTable().post(inputCaptureInterrupt);
     }
 
-    void newOCU(int unit, int numUnits, Microcontroller m, RegisterSet rset, char uname, int fb) {
+    void newOCU(int unit, int numUnits, Microcontroller m, RegisterSet rset, char uname, int fb, ATMegaFamily.FlagRegister fr) {
         if ( unit < numUnits ) {
-            compareUnits[unit] = new OutputCompareUnit(m, rset, uname, fb);
+            compareUnits[unit] = new OutputCompareUnit(m, rset, uname, fb, fr);
         }
     }
 

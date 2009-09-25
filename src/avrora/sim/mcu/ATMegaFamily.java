@@ -303,7 +303,6 @@ public abstract class ATMegaFamily extends AtmelMicrocontroller {
 
         protected void initValues() {
             // bit numbers
-
             OCIEnA = 4;
             OCIEnB = 3;
             OCIEnC = 0;// on ETIMSK
@@ -313,13 +312,19 @@ public abstract class ATMegaFamily extends AtmelMicrocontroller {
             OCFnB = 3;
             OCFnC = 0;// on ETIFR
             ICFn = 5;
+
             periods = periods1;
+          
+            // all bits are on TIFR/TIMSK
+            xTIFR_reg = TIFR_reg;
+            xTIMSK_reg = TIMSK_reg;
+            // except for OCIE1C and OCF1C
+            cTIFR_reg = ETIFR_reg;
+            cTIMSK_reg = ETIMSK_reg;
         }
 
         protected Timer1(int compareUnits) {
             super(1, compareUnits, ATMegaFamily.this);
-            xTIFR_reg = TIFR_reg;
-            xTIMSK_reg = TIMSK_reg;
         }
 
     }
@@ -334,23 +339,27 @@ public abstract class ATMegaFamily extends AtmelMicrocontroller {
 
         protected void initValues() {
             // bit numbers
-            OCIEnA = 4;
+            OCIEnA = 4; // all OCIEn on ETIMSK
             OCIEnB = 3;
-            OCIEnC = 1;// on ETIMSK
+            OCIEnC = 1;
             TOIEn = 2;
             TOVn = 2;
-            OCFnA = 4;
+            OCFnA = 4; // on OFCn on ETIFR
             OCFnB = 3;
-            OCFnC = 1;// on ETIFR
+            OCFnC = 1;
             ICFn = 5;
 
             periods = periods3;
+          
+            // all bits are on ETIFR/ETIMSK
+            xTIFR_reg = ETIFR_reg;
+            xTIMSK_reg = ETIMSK_reg;
+            cTIFR_reg = ETIFR_reg;
+            cTIMSK_reg = ETIMSK_reg;
         }
 
         protected Timer3(int compareUnits) {
             super(3, compareUnits, ATMegaFamily.this);
-            xTIMSK_reg = (ATMegaFamily.MaskRegister) microcontroller.getIOReg("ETIMSK");
-            xTIFR_reg = (ATMegaFamily.FlagRegister) microcontroller.getIOReg("ETIFR");
         }
 
     }

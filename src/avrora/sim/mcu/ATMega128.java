@@ -195,7 +195,7 @@ public class ATMega128 extends ATMegaFamily {
 
         rl.addIOReg("TCCR3C", 0x6C, "FOC3A,FOC3B,FOC3C,.....");
         rl.addIOReg("TCCR3A", 0x6B, "COM3A[1:0],COM3B[1:0],COM3C[1:0],WGM3[1:0]");
-        rl.addIOReg("TCCR3B", 0x6A, "...,WGM3[3:2],CS3[2:0]");
+        rl.addIOReg("TCCR3B", 0x6A, ".,ICES3,.,WGM3[3:2],CS3[2:0]");
         rl.addIOReg("TCNT3H", 0x69);
         rl.addIOReg("TCNT3L", 0x68);
         rl.addIOReg("OCR3AH", 0x67);
@@ -252,7 +252,7 @@ public class ATMega128 extends ATMegaFamily {
         rl.addIOReg("OCR0", 0x31);
         rl.addIOReg("ASSR", 0x30);
         rl.addIOReg("TCCR1A", 0x2F, "COM1A[1:0],COM1B[1:0],COM1C[1:0],WGM1[1:0]");
-        rl.addIOReg("TCCR1B", 0x2E, "...,WGM1[3:2],CS1[2:0]");
+        rl.addIOReg("TCCR1B", 0x2E, ".,ICES1,.,WGM1[3:2],CS1[2:0]");
         rl.addIOReg("TCNT1H", 0x2D);
         rl.addIOReg("TCNT1L", 0x2C);
         rl.addIOReg("OCR1AH", 0x2B);
