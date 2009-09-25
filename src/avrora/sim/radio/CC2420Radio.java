@@ -297,6 +297,10 @@ public class CC2420Radio implements Radio {
         CCA_active = true;
         SFD_active = true;
 
+        SendAck = false;  // reset these internal variables
+        SendAckPend = false;
+        ClearFlag = false;
+        
         // reset pins.
         FIFO_pin.level.setValue(!FIFO_active);
         FIFOP_pin.level.setValue(!FIFOP_active);
@@ -904,20 +908,21 @@ public class CC2420Radio implements Radio {
         }
 
         void startup() {            
-            if (!txActive.getValue() && !TXstartingUp){                            
-            TXstartingUp = true;
-                sim.insertEvent(new Simulator.Event() {
-                    public void fire() {                    
-                        TXstartingUp = false;                    
+//            if (!txActive.getValue() && !TXstartingUp){                            
+//            TXstartingUp = true;
+//                sim.insertEvent(new Simulator.Event() {
+//                    public void fire() {                    
+//                        TXstartingUp = false;                    
+          if (!txActive.getValue()) {
                         stateMachine.transition((readRegister(TXCTRL) & 0x1f)+4);//change to Tx(Level) state
                         txActive.setValue(true);
                         state = TX_IN_PREAMBLE;
                         beginTransmit(getPower(),getFrequency());
-                        if (printer != null) {
-                            printer.println("TX Started Up");
-                        }
-                    }
-                }, toCycles(PLL_LOCK_TIME));
+//                        if (printer != null) {
+//                            printer.println("TX Started Up");
+//                        }
+//                    }
+//                }, toCycles(PLL_LOCK_TIME));
            }
        }         
 
@@ -1228,18 +1233,18 @@ public class CC2420Radio implements Radio {
         }
 
         void startup() {
-            if (!RXstartingUp){
-                RXstartingUp = true;
-                sim.insertEvent(new Simulator.Event() {               
-                    public void fire() {                    
+//            if (!RXstartingUp){
+//                RXstartingUp = true;
+//                sim.insertEvent(new Simulator.Event() {               
+//                    public void fire() {                    
                         stateMachine.transition(3);//change to receive state
                         state = RECV_SFD_SCAN;
                         beginReceive(getFrequency());
-                        RXstartingUp = false;
-                        if (printer!=null) printer.println("RX Started Up");
-                    }
-                }, toCycles(PLL_LOCK_TIME));
-            }           
+//                        RXstartingUp = false;
+//                        if (printer!=null) printer.println("RX Started Up");
+//                    }
+//                }, toCycles(PLL_LOCK_TIME));
+//            }           
         }
 
         void shutdown() {
