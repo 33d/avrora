@@ -42,9 +42,7 @@ import avrora.sim.output.SimPrinter;
 import avrora.sim.clock.Clock;
 import avrora.sim.energy.Energy;
 import avrora.sim.mcu.Microcontroller;
-import avrora.sim.util.SimUtil;
 import cck.text.Terminal;
-import cck.text.Verbose;
 
 /**
  * The <code>ExternalFlash</code> class implements the necessary functionality of the
@@ -72,10 +70,9 @@ public class ExternalFlash {
     private int dfByteOffset;
     private int dfTempByte;
     private short dfStatus;		// Dataflash Status Register
-    private long dfDelay;			// delay while busy in cycles
     private double delay;		// delay while busy in ms
     private boolean so, si;		// serial output, serial input
-    private int icOffset, icPage;				// internal address counter
+    private int icPage;		    // internal address counter
     private boolean tick;
     private short step;
     private byte i;
@@ -108,37 +105,50 @@ public class ExternalFlash {
      * The <code>Memory</code> class simulates the Dataflash Memory
      */
     private class Memory {
-        Page[] pages;
+        private final int bytesPerPage;
+        private final Page[] pages;
         Page buffer1;
         Page buffer2;
 
-        protected Memory() {
-            pages = new Page[2048];
-            buffer1 = new Page();
-            buffer2 = new Page();
-            for (int i = 0; i < 2048; i++) {
-                pages[i] = new Page();
+        protected Memory(int numPages, int numBytes) {
+            pages = new Page[numPages];
+            bytesPerPage = numBytes;
+            buffer1 = new Page(numBytes);
+            buffer2 = new Page(numBytes);
+        }
+
+        Page getPage(int pageNum) {
+            ExternalFlash.Page page = pages[pageNum];
+            if (page == null) {
+                page = new Page(bytesPerPage);
+                pages[pageNum] = page;
             }
+            return page;
+        }
+
+        void setPage(int pageNum, Page page) {
+            pages[pageNum] = page;
         }
     }
 
     private class Page {
-        public short[] bytes;
+        final short[] bytes;
 
-        protected Page() {
-            bytes = new short[264];
+        protected Page(int numBytes) {
+            bytes = new short[numBytes];
         }
 		void debug() {
-			int i;
-			for(i = 0; i < 264; i++) {
-				echo("Byte " + i + " = " + bytes[i]);
-			}
-		}
+            if (printer != null) {
+                int i;
+                for(i = 0; i < bytes.length; i++) {
+                    echo("Byte " + i + " = " + bytes[i]);
+                }
+            }
+        }
     }
 
-    // TODO: parameterize this class by size, page size, etc
-    public ExternalFlash(Microcontroller mcunit) {
-        memory = new Memory();
+    public ExternalFlash(Microcontroller mcunit, int numPages, int pageBytes) {
+        memory = new Memory(numPages, pageBytes);
         mcu = mcunit;
         sim = mcu.getSimulator();
         printer = sim.getPrinter("mica2.flash");
@@ -158,52 +168,52 @@ public class ExternalFlash {
         mcu.getPin("PD2").connectInput(new PD2Input());
 
         //setup energy recording
-        new Energy("flash", modeAmpere, stateMachine);
+        new Energy("flash", modeAmpere, stateMachine, sim.getSimulation().getEnergyControl());
     }
 
     private Page getMemoryPage(int num) {
-        return this.memory.pages[num];
+        return memory.getPage(num);
     }
 
     private short getMemoryPageAt(int num, int offset) {
-        return this.memory.pages[num].bytes[offset];
+        return memory.getPage(num).bytes[offset];
     }
 
     private void setMemoryPage(int num, Page val) {
-        this.memory.pages[num] = val;
-		this.memory.pages[num].debug();
+        memory.setPage(num, val);
+		val.debug();
     }
 
     private Page getBuffer1() {
-        return this.memory.buffer1;
+        return memory.buffer1;
     }
 
     private short getBuffer1(int offset) {
-        return this.memory.buffer1.bytes[offset];
+        return memory.buffer1.bytes[offset];
     }
 
     private void setBuffer1(Page value) {
-        this.memory.buffer1 = value;
+        memory.buffer1 = value;
     }
 
     private void setBuffer1(int offset, short value) {
-        this.memory.buffer1.bytes[offset] = value;
+        memory.buffer1.bytes[offset] = value;
     }
 
     private Page getBuffer2() {
-        return this.memory.buffer2;
+        return memory.buffer2;
     }
 
     private short getBuffer2(int offset) {
-        return this.memory.buffer2.bytes[offset];
+        return memory.buffer2.bytes[offset];
     }
 
     private void setBuffer2(Page value) {
-        this.memory.buffer2 = value;
+        memory.buffer2 = value;
     }
 
     private void setBuffer2(int offset, short value) {
-        this.memory.buffer2.bytes[offset] = value;
+        memory.buffer2.bytes[offset] = value;
     }
 
     private void copyBuffer1toPage(int num) {
@@ -346,7 +356,7 @@ public class ExternalFlash {
 
                 // Dataflash is busy
                 dfStatus &= ~DF_STATUS_READY;
-                dfDelay = clock.millisToCycles(delay / 1000);  //cycles until access is finished
+                long dfDelay = clock.millisToCycles(delay / 1000);
                 clock.insertEvent(new Delay(), dfDelay);
 
                 // reset values
@@ -393,7 +403,7 @@ public class ExternalFlash {
                                 echo("1 Byte of serial data was output on the SO: " + temp);
 
                                 // internal address counter
-                                icOffset = dfByteOffset + 1;
+                                int icOffset = dfByteOffset + 1;
                                 if (icOffset > 263) {
                                     icOffset -= 264;
                                     icPage = dfPageAddress++;
@@ -475,7 +485,7 @@ public class ExternalFlash {
                 case 1:
                     //	get opcode
                     dfOpcode = dfTempByte;
-                    echo("Recieved Opcode: " + dfOpcode);
+                    echo("Received Opcode: " + dfOpcode);
                     // Status Register Read?
                     if (dfOpcode == 0x57 || dfOpcode == 0xD7) {
                         isReading = true;

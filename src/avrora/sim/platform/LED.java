@@ -38,7 +38,6 @@ import avrora.sim.output.SimPrinter;
 import avrora.sim.clock.Clock;
 import avrora.sim.energy.Energy;
 import avrora.sim.mcu.Microcontroller;
-import avrora.sim.util.SimUtil;
 import cck.text.Terminal;
 
 /**
@@ -112,7 +111,7 @@ public class LED implements Microcontroller.Pin.Output {
 
         state = new FiniteStateMachine(clk, startMode, modeName, 0);
         probe = new LEDProbe();
-        new Energy(c, modeAmpere, state);
+        new Energy(c, modeAmpere, state, sim.getSimulation().getEnergyControl());
     }
 
     public void write(boolean level) {

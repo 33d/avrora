@@ -23,28 +23,26 @@ package avrora.sim.radio;
 import cck.util.Util;
 import java.io.*;
 import java.util.*;
+
 /**
  *
- * @author Rodolfo de Paz 
+ * @author Rodolfo de Paz
  * it handles noise file
  */
+public class Noise {
 
+    private static List noise = new ArrayList();
 
-
-public class noise {      
-
-    private static List noise = new ArrayList();  
-       
     /** Creates a new instance of Noise from file */
-    public noise(String fileName) throws FileNotFoundException, IOException {
-         
-        parse(new BufferedReader(new FileReader(fileName)));  
+    public Noise(String fileName) throws IOException {
+        parse(new BufferedReader(new FileReader(fileName)));
     }
+
     /** Creates a new instance of Noise when there isn't noise file */
-    public noise(){
-         
-        noise.add(new Integer(-95));  
+    public Noise() {
+        noise.add(new Integer(-95));
     }
+
     private void parse(BufferedReader f) throws IOException {
         String line;
         while ((line = f.readLine()) != null) {
@@ -52,14 +50,14 @@ public class noise {
         }
         f.close();
     }
-    
+
    /**
      * parse one line of the file
      *
      * @param line
      */
-    private void parseLine(String line) {        
-        int noise_value=0;
+    private void parseLine(String line) {
+        int noise_value = 0;
         //check for comment
         if (!line.startsWith("#")) {
             StringTokenizer tokenizer = new StringTokenizer(line, " ");
@@ -67,7 +65,7 @@ public class noise {
             while (tokenizer.hasMoreTokens()) {
                 try {
                     if (count == 0){
-                        noise_value = Integer.parseInt(tokenizer.nextToken());                        
+                        noise_value = Integer.parseInt(tokenizer.nextToken());
                     }
                     count++;
                 } catch (NoSuchElementException e) {
@@ -81,9 +79,10 @@ public class noise {
         }
     }
 
-    public static int getNoise(int index) {          
+    public static int getNoise(int index) {
         return ((Integer)noise.get(index)).intValue();
     }
+
     public static int sizeNoise() {
         return noise.size();
     }

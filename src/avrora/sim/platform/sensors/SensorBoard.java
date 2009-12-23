@@ -55,11 +55,11 @@ public class SensorBoard {
     private static final int startMode = 0;
 
     public SensorBoard(Simulator s) {
-        sim = s;        
+        sim = s;
         //setup energy recording
         //note: the name sensorBoard was choosen on purpose as it is used in the log files
         //if you use sensor board, you may have trouble with importing the data as it is separated by white spaces
         FiniteStateMachine fsm = new FiniteStateMachine(s.getClock(), startMode, modeName, 0);
-        new Energy("SensorBoard", modeAmpere, fsm);
+        new Energy("SensorBoard", modeAmpere, fsm, sim.getSimulation().getEnergyControl());
     }
 }

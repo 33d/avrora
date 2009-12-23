@@ -34,7 +34,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 package avrora.monitors;
 
 import avrora.sim.Simulator;
@@ -47,7 +46,6 @@ import cck.util.Option;
 import java.util.*;
 import java.text.StringCharacterIterator;
 
-
 /**
  * Packet monitor implementation. This class logs the number of packets, e.g. bytes sent and received.
  *
@@ -55,6 +53,8 @@ import java.text.StringCharacterIterator;
  * @author Ben L. Titzer
  */
 public class PacketMonitor extends MonitorFactory {
+
+    private static final int INITIAL_BUFFER_SIZE = 64;
 
     protected Option.Bool BITS = newOption("show-bits", false,
             "This option enables the printing of packets as they are transmitted.");
@@ -68,7 +68,9 @@ public class PacketMonitor extends MonitorFactory {
     protected List monitors = new LinkedList();
 
     class Mon implements Monitor, Medium.Probe {
-        LinkedList bytes;
+        char[] bufferData;
+        int bufferPos;
+
         final Simulator simulator;
         final SimPrinter printer;
         final boolean showPackets;
@@ -85,7 +87,6 @@ public class PacketMonitor extends MonitorFactory {
         long startCycle;
         boolean cc2420radio;
 
-
         Mon(Simulator s) {
             simulator = s;
             Platform platform = simulator.getMicrocontroller().getPlatform();
@@ -94,14 +95,9 @@ public class PacketMonitor extends MonitorFactory {
             radio.getReceiver().insertProbe(this);
             printer = simulator.getPrinter();
             showPackets = PACKETS.get();
-            bytes = new LinkedList();
             bits = BITS.get();
 
-            getStartSymbol(radio);
-            monitors.add(this);
-        }
-
-        private void getStartSymbol(Radio radio) {
+            // compute the start symbol
             if (!START_SYMBOL.isBlank()) {
                 matchStart = true;
                 startSymbol = (byte) StringUtil.readHexValue(new StringCharacterIterator(START_SYMBOL.get()), 2);
@@ -117,85 +113,100 @@ public class PacketMonitor extends MonitorFactory {
                     startSymbol = (byte)0xA7;
                 }
             }
+            monitors.add(this);
+        }
+
+        private void append(char c) {
+            if (bufferData == null) {
+                bufferData = new char[INITIAL_BUFFER_SIZE];
+            } else if (bufferData.length == bufferPos) {
+                char[] newData = new char[bufferData.length * 2];
+                System.arraycopy(bufferData, 0, newData, 0, bufferData.length);
+                bufferData = newData;
+            }
+            bufferData[bufferPos++] = c;
+        }
+
+        private void clear() {
+            bufferPos = 0;
+            bufferData = null;
         }
 
         public void fireBeforeTransmit(Medium.Transmitter t, byte val) {
-            if (bytes.size() == 0) startCycle = simulator.getClock().getCount();
-            bytes.addLast(new Character((char)(0xff & val)));
+            if (bufferPos == 0) startCycle = simulator.getClock().getCount();
+            append((char) (val & 0xff));
             bytesTransmitted++;
         }
 
         public void fireBeforeTransmitEnd(Medium.Transmitter t) {
             packetsTransmitted++;
-            if ( showPackets ) {
+            if (showPackets) {
                 printer.printBuffer(renderPacket("----> "));
             }
-            bytes = new LinkedList();
+            clear();
         }
 
         public void fireAfterReceive(Medium.Receiver r, char val) {
-                if (bytes.size() == 0) startCycle = simulator.getClock().getCount();
-                if (Medium.isCorruptedByte(val)) bytesCorrupted++;
-                bytesReceived++;
-                bytes.addLast(new Character(val));
+            if (bufferPos == 0) startCycle = simulator.getClock().getCount();
+            if (Medium.isCorruptedByte(val)) bytesCorrupted++;
+            bytesReceived++;
+            append(val);
         }
 
-
         public void fireAfterReceiveEnd(Medium.Receiver r) {
-            if (cc2420radio){
-                Iterator b = bytes.iterator();
-                int cnt = 0;
+            if (bufferPos == 0 || bufferData == null) {
+                return;
+            }
+            if (cc2420radio) {
                 //If bytes were lost in the middle of the packet do not show them
-                boolean LostBytesinPacket=false;
-                while ( b.hasNext() ) {
-                    cnt++;
-                    char c = ((Character)b.next()).charValue();
-                    switch (cnt){
+                boolean lostBytesinPacket = false;
+                for (int cnt = 0; cnt < bufferPos; cnt++) {
+                    char c = bufferData[cnt];
+                    switch (cnt) {
                         case 1:
                         case 2:
                         case 3:
-                            if (c != '\u0000') LostBytesinPacket = true;
+                            if (c != '\u0000') lostBytesinPacket = true;
                             break;
                         case 4:
-                            if (c != '\u000f') LostBytesinPacket = true;
+                            if (c != '\u000f') lostBytesinPacket = true;
                             break;
                         case 5:
-                            if (c != '\u00A7') LostBytesinPacket = true;
+                            if (c != '\u00A7') lostBytesinPacket = true;
                             break;
                         case 6:
-                            if (c != (char)(bytes.size()-6)) LostBytesinPacket = true;
+                            if (c != (char)(bufferPos - 6)) lostBytesinPacket = true;
                             break;
                         default:
                             break;
                     }
                 }
-                if (!LostBytesinPacket){
+                if (!lostBytesinPacket) {
                     packetsReceived++;
                     if ( showPackets) {
                         printer.printBuffer(renderPacket("<==== "));
                     }
-                }else packetsLostinMiddle++;
+                } else {
+                    packetsLostinMiddle++;
+                }
 
-            }else{
+            } else {
                 packetsReceived++;
                 if ( showPackets ) {
                     printer.printBuffer(renderPacket("<==== "));
                 }
             }
-            bytes = new LinkedList();
+            clear();
         }
 
         private StringBuffer renderPacket(String prefix) {
-            StringBuffer buf = printer.getBuffer(3 * bytes.size() + 15);
+            StringBuffer buf = printer.getBuffer(3 * bufferPos + 15);
             Terminal.append(Terminal.COLOR_BRIGHT_CYAN, buf, prefix);
-            Iterator i = bytes.iterator();
-            int cntr = 0;
             boolean inPreamble = true;
-            while ( i.hasNext() ) {
-                cntr++;
-                char t = ((Character)i.next()).charValue();
+            for (int cntr = 0; cntr < bufferPos; cntr++) {
+                char t = bufferData[cntr];
                 inPreamble = renderByte(cntr, t, inPreamble, buf);
-                if (i.hasNext()) buf.append('.');
+                if (cntr < bufferPos - 1) buf.append('.');
             }
             appendTime(buf);
             return buf;
@@ -222,7 +233,7 @@ public class PacketMonitor extends MonitorFactory {
                         color = Terminal.COLOR_YELLOW;
                         inPreamble = false;
                     }
-                }else if (!inPreamble && cntr > 5){
+                } else if (!inPreamble && cntr > 5) {
                     color = Terminal.COLOR_GREEN;
                 }
             }
@@ -279,7 +290,6 @@ public class PacketMonitor extends MonitorFactory {
     public PacketMonitor() {
         super("The \"packet\" monitor tracks packets sent and received by nodes in a sensor network.");
     }
-
 
     /**
      * create a new monitor, calls the constructor

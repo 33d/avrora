@@ -41,7 +41,7 @@ import avrora.sim.platform.PlatformFactory;
 import avrora.sim.platform.sensors.*;
 import avrora.sim.radio.*;
 import avrora.sim.radio.Topology;
-import avrora.sim.radio.noise;
+import avrora.sim.radio.Noise;
 import cck.text.StringUtil;
 import cck.util.*;
 
@@ -75,11 +75,11 @@ public class SensorSimulation extends Simulation {
             "When this option is specified. the free space radio model will be used " +
             "to model radio propagation.");
     public final Option.Bool LOSSY_MODEL = newOption("lossy-model",false,
-            "When this option is set, the radio model takes into account noise and fadings thus" +
+            "When this option is set, the radio model takes into account Noise and fadings thus" +
             "implementing in micaz platform the correlation, cca and rssi functions.");
-    public final Option.Str NOISE = newOption("noise", "",
+    public final Option.Str NOISE = newOption("Noise", "",
             "This option can be used to specify the name of " +
-            "a file that contains a noise time trace. When this option is specified" +
+            "a file that contains a Noise time trace. When this option is specified" +
             "the indoor radio model will be used to model radio propagation.");
     public final Option.Double RANGE = newOption("radio-range", 15.0,
             "This option, when used in conjunction with the -topology option, specifies " +
@@ -279,7 +279,7 @@ public class SensorSimulation extends Simulation {
     }
 
     Topology topology;
-    noise Noise;
+    Noise noise;
     LossyModel lossyModel;
     RadiusModel radiusModel;
     Medium cc2420_medium;
@@ -339,7 +339,7 @@ public class SensorSimulation extends Simulation {
         // process the sensor data input option
         processSensorInput();
 
-        //create noise time trace
+        //create Noise time trace
         createNoise();
     }
 
@@ -360,10 +360,10 @@ public class SensorSimulation extends Simulation {
         }
     }
         private void createNoise() throws Exception {
-            if (Noise == null && !NOISE.isBlank()) {
-                    Noise = new noise(NOISE.get());
-            }else if (Noise == null && NOISE.isBlank()){
-                    Noise = new noise();
+            if (noise == null && !NOISE.isBlank()) {
+                    noise = new Noise(NOISE.get());
+            }else if (noise == null && NOISE.isBlank()){
+                    noise = new Noise();
             }
     }
 

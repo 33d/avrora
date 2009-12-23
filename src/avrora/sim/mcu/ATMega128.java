@@ -373,7 +373,7 @@ public class ATMega128 extends ATMegaFamily {
         MCUCR_reg = getIOReg("MCUCR");
         installPins();
         installDevices();
-        new Energy("CPU", modeAmpere, sleepState);
+        new Energy("CPU", modeAmpere, sleepState, sim.getEnergyControl());
     }
 
     protected void installPins() {

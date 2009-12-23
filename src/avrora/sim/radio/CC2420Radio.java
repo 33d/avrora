@@ -253,7 +253,7 @@ public class CC2420Radio implements Radio {
 
         stateMachine = new FiniteStateMachine(simulator.getClock(), CC2420Energy.startMode, allModeNames, ttm);
 
-        new Energy("Radio", CC2420Energy.modeAmpere, stateMachine);
+        new Energy("Radio", CC2420Energy.modeAmpere, stateMachine, sim.getSimulation().getEnergyControl());
 
         // reset all registers
         reset();
@@ -300,7 +300,7 @@ public class CC2420Radio implements Radio {
         SendAck = false;  // reset these internal variables
         SendAckPend = false;
         ClearFlag = false;
-        
+
         // reset pins.
         FIFO_pin.level.setValue(!FIFO_active);
         FIFOP_pin.level.setValue(!FIFOP_active);
@@ -730,7 +730,7 @@ public class CC2420Radio implements Radio {
 
     private void pinChange_VREN(boolean level) {
       if (level) {
-        // the voltage regulator has been switched on 
+        // the voltage regulator has been switched on
         if (stateMachine.getCurrentState() == 0) {
           // actually, there is a startup time for the voltage regulator
           // but we assume here that it starts immediately
@@ -763,7 +763,7 @@ public class CC2420Radio implements Radio {
         }
       }
     }
-    
+
     private static final int TX_IN_PREAMBLE = 0;
     private static final int TX_SFD_1 = 1;
     private static final int TX_SFD_2 = 2;
@@ -829,7 +829,7 @@ public class CC2420Radio implements Radio {
                             state = TX_END;
                             // SFD is also set to inactive when an underflow occurs
                             SFD_value.setValue(!SFD_active);
-                            // auto transition back to receive mode.                    
+                            // auto transition back to receive mode.
                             shutdown();
                             receiver.startup();// auto transition back to receive mode.
                             break;
@@ -907,12 +907,12 @@ public class CC2420Radio implements Radio {
             return val + 1;
         }
 
-        void startup() {            
-//            if (!txActive.getValue() && !TXstartingUp){                            
+        void startup() {
+//            if (!txActive.getValue() && !TXstartingUp){
 //            TXstartingUp = true;
 //                sim.insertEvent(new Simulator.Event() {
-//                    public void fire() {                    
-//                        TXstartingUp = false;                    
+//                    public void fire() {
+//                        TXstartingUp = false;
           if (!txActive.getValue()) {
                         stateMachine.transition((readRegister(TXCTRL) & 0x1f)+4);//change to Tx(Level) state
                         txActive.setValue(true);
@@ -924,7 +924,7 @@ public class CC2420Radio implements Radio {
 //                    }
 //                }, toCycles(PLL_LOCK_TIME));
            }
-       }         
+       }
 
         void shutdown() {
             stateMachine.transition(2);//change to idle state
@@ -1235,8 +1235,8 @@ public class CC2420Radio implements Radio {
         void startup() {
 //            if (!RXstartingUp){
 //                RXstartingUp = true;
-//                sim.insertEvent(new Simulator.Event() {               
-//                    public void fire() {                    
+//                sim.insertEvent(new Simulator.Event() {
+//                    public void fire() {
                         stateMachine.transition(3);//change to receive state
                         state = RECV_SFD_SCAN;
                         beginReceive(getFrequency());
@@ -1244,7 +1244,7 @@ public class CC2420Radio implements Radio {
 //                        if (printer!=null) printer.println("RX Started Up");
 //                    }
 //                }, toCycles(PLL_LOCK_TIME));
-//            }           
+//            }
         }
 
         void shutdown() {

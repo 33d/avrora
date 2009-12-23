@@ -1,6 +1,6 @@
 /**
  * Created on 19. September 2004, 00:19
- * 
+ *
  * Copyright (c) 2004-2005, Olaf Landsiedel, Protocol Engineering and
  * Distributed Systems, University of Tuebingen
  * All rights reserved.
@@ -17,7 +17,7 @@
  * documentation and/or other materials provided with the distribution.
  *
  * Neither the name of the Protocol Engineering and Distributed Systems
- * Group, the name of the University of Tuebingen nor the names of its 
+ * Group, the name of the University of Tuebingen nor the names of its
  * contributors may be used to endorse or promote products derived from
  * this software without specific prior written permission.
  *
@@ -40,101 +40,68 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 /**
- * implementation of energy control handles subsrciption of monitors and consumers
+ * implementation of energy control handles subscription of monitors and consumers
  *
  * @author Olaf Landsiedel
  */
 public class EnergyControl {
 
-    public static class Instance {
-        //consumer list
-        // e.g. list of devices which consume energy
-        public final LinkedList consumer;
+    //consumer list
+    // e.g. list of devices which consume energy
+    public final LinkedList consumer;
 
-        //list of monitors which want to be informed about
-        //energy consumption
-        private final LinkedList subscriber;
+    //list of monitors which want to be informed about
+    //energy consumption
+    private final LinkedList subscriber;
+    private boolean active;
 
-        Instance() {
-            consumer = new LinkedList();
-            subscriber = new LinkedList();
-        }
-
-        /**
-         * add energy monitor
-         *
-         * @param energyMonitor monitor
-         */
-        public void subscribe(EnergyObserver energyMonitor) {
-            subscriber.add(energyMonitor);
-        }
-
-        /**
-         * get list of consumers
-         *
-         * @return consumer list
-         */
-        public LinkedList getConsumers() {
-            return consumer;
-        }
-
-        /**
-         * update the state of a device
-         *
-         * @param energy the energy model of the device
-         */
-        public void stateChange(Energy energy) {
-            Iterator it = subscriber.iterator();
-            while( it.hasNext() ){
-                ((EnergyObserver)it.next()).stateChange(energy);
-            }
-        }
-
-    }
-
-    private static Instance currentInstance;
-
-    //indicates whether someone is interested in energy
-    //data
-    private static boolean active; 
-
-    /**
-     * create a new instance of energy control
-     */
-    static {
-        active = false;
-        currentInstance = new Instance();
+    public EnergyControl() {
+        consumer = new LinkedList();
+        subscriber = new LinkedList();
     }
 
     /**
-     * add consumer
+     * add energy monitor
      *
-     * @param energy consumer
+     * @param energyMonitor monitor
      */
-    public static void addConsumer(Energy energy) {
-        currentInstance.consumer.add(energy);
-        if ( active ) energy.activate();
+    public void subscribe(EnergyObserver energyMonitor) {
+        subscriber.add(energyMonitor);
     }
 
     /**
-     * activate the energy model, called by monitors who are interested
-     * in energy information
+     * get list of consumers
+     *
+     * @return consumer list
      */
-    public static void activate(){
-        if( !active ){
+    public LinkedList getConsumers() {
+        return consumer;
+    }
+
+    /**
+     * update the state of a device
+     *
+     * @param energy the energy model of the device
+     */
+    public void stateChange(Energy energy) {
+        Iterator it = subscriber.iterator();
+        while (it.hasNext()) {
+            ((EnergyObserver) it.next()).stateChange(energy);
+        }
+    }
+
+    public void activate() {
+        if (!active) {
             active = true;
-            Iterator it = currentInstance.consumer.iterator();
-            while( it.hasNext() ){
-                ((Energy)it.next()).activate();
+            Iterator it = consumer.iterator();
+            while (it.hasNext()) {
+                ((Energy) it.next()).activate();
             }
         }
     }
 
-    public static Instance getCurrentInstance() {
-        return currentInstance;
-    }
-
-    public static void nextInstance() {
-        currentInstance = new Instance();
+    public void addConsumer(Energy energy) {
+        consumer.add(energy);
+        if (active) energy.activate();
     }
 }

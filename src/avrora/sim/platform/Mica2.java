@@ -116,7 +116,7 @@ public class Mica2 extends Platform {
         // sensor board
         sensorboard = new SensorBoard(sim);
         // external flash
-        externalFlash = new ExternalFlash(mcu);
+        externalFlash = new ExternalFlash(mcu, 2048, 264);
         AtmelMicrocontroller amcu = (AtmelMicrocontroller)mcu;
         // acceleration sensors
         accelXSensor = new AccelSensor(amcu, 3, "PC4");

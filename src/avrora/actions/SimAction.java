@@ -88,7 +88,8 @@ public class SimAction extends Action {
         simulation = Defaults.getSimulation(SIMULATION.get());
         simulation.process(options, args);
 
-        Runtime.getRuntime().addShutdownHook(new ShutdownThread());
+        ShutdownThread shutdownThread = new ShutdownThread();
+        Runtime.getRuntime().addShutdownHook(shutdownThread);
         printSimHeader();
         try {
             startms = System.currentTimeMillis();
@@ -96,8 +97,10 @@ public class SimAction extends Action {
             simulation.join();
         } catch (Throwable t) {
             exitSimulation(t);
+            Runtime.getRuntime().removeShutdownHook(shutdownThread);
         } finally {
             exitSimulation(null);
+            Runtime.getRuntime().removeShutdownHook(shutdownThread);
         }
     }
 

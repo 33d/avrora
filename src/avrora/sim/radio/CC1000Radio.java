@@ -174,7 +174,7 @@ public class CC1000Radio implements Radio {
 
         stateMachine = new FiniteStateMachine(simulator.getClock(), RadioEnergy.startMode, allModeNames, ttm);
 
-        new Energy("Radio", RadioEnergy.modeAmpere, stateMachine);
+        new Energy("Radio", RadioEnergy.modeAmpere, stateMachine, sim.getSimulation().getEnergyControl());
 
         ATMegaFamily amcu = (ATMegaFamily) mcu;
         ticker = new SPITicker();

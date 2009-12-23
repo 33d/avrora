@@ -42,6 +42,7 @@ import avrora.sim.platform.*;
 import avrora.sim.util.ClockCycleTimeout;
 import avrora.sim.util.InterruptScheduler;
 import avrora.sim.output.SimPrinter;
+import avrora.sim.energy.EnergyControl;
 import cck.help.HelpCategory;
 import cck.util.*;
 import cck.text.Verbose;
@@ -305,6 +306,7 @@ public abstract class Simulation extends HelpCategory {
     protected boolean paused;
     protected Random random;
     protected LinkedList monitorFactoryList;
+    protected EnergyControl energyControl;
 
     protected Synchronizer synchronizer;
 
@@ -320,6 +322,7 @@ public abstract class Simulation extends HelpCategory {
      */
     protected Simulation(String str, String h, Synchronizer s) {
         super(str, h);
+        energyControl = new EnergyControl();
         nodes = new Node[16];
         synchronizer = s;
         monitorFactoryList = new LinkedList();
@@ -348,6 +351,10 @@ public abstract class Simulation extends HelpCategory {
 
     public SimPrinter getPrinter(Simulator s) {
         return new SimPrinter(s, "");
+    }
+
+    public EnergyControl getEnergyControl() {
+        return energyControl;
     }
 
     /**

@@ -129,7 +129,7 @@ public class MicaZ extends Platform {
         // sensor board
         sensorboard = new SensorBoard(sim);
         // external flash
-        externalFlash = new ExternalFlash(mcu);
+        externalFlash = new ExternalFlash(mcu, 2048, 264);
         // light sensor
         lightSensor = new LightSensor(amcu, 1, "PC2", "PE5");
         addDevice("light-sensor", lightSensor);

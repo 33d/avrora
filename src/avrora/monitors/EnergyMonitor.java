@@ -43,7 +43,6 @@ import avrora.sim.output.SimPrinter;
 import avrora.sim.clock.Clock;
 import avrora.sim.energy.*;
 import avrora.sim.platform.Platform;
-import avrora.sim.util.SimUtil;
 import cck.text.Terminal;
 import cck.text.TermUtil;
 import cck.util.Option;
@@ -85,7 +84,7 @@ public class EnergyMonitor extends MonitorFactory {
         // the simulator
         protected Simulator simulator;
         protected Platform platform;
-        protected EnergyControl.Instance instance;
+        protected EnergyControl energyControl;
         // energy a node is allowed to consume (in joules)
         private double energy;
         protected BatteryCheck batteryCheck;
@@ -103,9 +102,8 @@ public class EnergyMonitor extends MonitorFactory {
             this.platform = s.getMicrocontroller().getPlatform();
             //activate energy monitoring....
             //so the state machine is set up for energy monitoring when needed
-            EnergyControl.activate();
-            instance = EnergyControl.getCurrentInstance();
-            EnergyControl.nextInstance();
+            energyControl = s.getSimulation().getEnergyControl();
+            energyControl.activate();
 
             if ( (energy = BATTERY.get()) > 0 ) {
                 batteryCheck = new BatteryCheck();
@@ -129,7 +127,7 @@ public class EnergyMonitor extends MonitorFactory {
             long cycles = clock.getCount();
             Terminal.println("Node lifetime: " + cycles + " cycles,  " + clock.cyclesToMillis(cycles) / 1000.0+ " seconds\n");
             // get energy information for each device
-            Iterator it = instance.consumer.iterator();
+            Iterator it = energyControl.consumer.iterator();
             while( it.hasNext() ){
                 //get energy information
                 Energy en = (Energy)it.next();
@@ -157,7 +155,7 @@ public class EnergyMonitor extends MonitorFactory {
 
             public void fire(){
                 double totalEnergy = 0.0d;
-                Iterator it = instance.consumer.iterator();
+                Iterator it = energyControl.consumer.iterator();
                 //for (int i = 0; i < consumer.size(); ++i) {
                 while(it.hasNext()){
                     //get energy information
@@ -205,7 +203,7 @@ public class EnergyMonitor extends MonitorFactory {
             Logger() {
                 this.state = simulator.getState();
                 // subscribe the monitor to the energy  control
-                instance.subscribe(this);
+                energyControl.subscribe(this);
 
                 //open file for logging, currently with fixed path and file name
                 String fileName = LOG.get() + simulator.getID();
@@ -219,7 +217,7 @@ public class EnergyMonitor extends MonitorFactory {
                 //first: cycle
                 write("cycle ");
                 //and than all consumers names
-                Iterator it = instance.consumer.iterator();
+                Iterator it = energyControl.consumer.iterator();
                 while( it.hasNext() ){
                     //for (int i = 0; i < consumer.size(); ++i) {
                     Energy en = (Energy)it.next();
@@ -292,7 +290,7 @@ public class EnergyMonitor extends MonitorFactory {
                 write(state.getCycles() + " ");
                 //and than all consumers
                 double total = 0.0f;
-                Iterator it = instance.consumer.iterator();
+                Iterator it = energyControl.consumer.iterator();
                 while(it.hasNext()){
                     Energy en = (Energy)it.next();
                     double ampere = en.getCurrentAmpere();
@@ -315,7 +313,7 @@ public class EnergyMonitor extends MonitorFactory {
                 write((state.getCycles() - 1) + " ");
                 //and than all consumers
                 double total = 0.0f;
-                Iterator it = instance.consumer.iterator();
+                Iterator it = energyControl.consumer.iterator();
                 //for (int i = 0; i < consumer.size(); ++i) {
                 while( it.hasNext() ){
                     Energy en = (Energy)it.next();

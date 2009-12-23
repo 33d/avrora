@@ -170,7 +170,6 @@ public class Defaults {
             actions.addClass("analyze-stack", AnalyzeStackAction.class);
             actions.addClass("test", TestAction.class);
             actions.addClass("cfg", CFGAction.class);
-            actions.addClass("gui", GUIAction.class);
             actions.addClass("isea", ISEAAction.class);
             actions.addClass("odpp", ODPPAction.class);
             actions.addClass("elf-dump", ELFDumpAction.class);
