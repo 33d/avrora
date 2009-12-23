@@ -41,7 +41,7 @@ import avrora.sim.platform.PlatformFactory;
 import avrora.sim.platform.sensors.*;
 import avrora.sim.radio.*;
 import avrora.sim.radio.Topology;
-import avrora.sim.radio.Noise;
+import avrora.sim.radio.noise;
 import cck.text.StringUtil;
 import cck.util.*;
 
@@ -279,7 +279,7 @@ public class SensorSimulation extends Simulation {
     }
 
     Topology topology;
-    Noise noise;
+    noise noise;
     LossyModel lossyModel;
     RadiusModel radiusModel;
     Medium cc2420_medium;
@@ -361,9 +361,9 @@ public class SensorSimulation extends Simulation {
     }
         private void createNoise() throws Exception {
             if (noise == null && !NOISE.isBlank()) {
-                    noise = new Noise(NOISE.get());
+                    noise = new noise(NOISE.get());
             }else if (noise == null && NOISE.isBlank()){
-                    noise = new Noise();
+                    noise = new noise();
             }
     }
 

@@ -20,7 +20,6 @@ all: avrora
 
 avrora:
 	@$(JAVAC) $(CFLAGS) $(CCK_SRC) $(AVRORA_SRC)
-	@cp -r src/avrora/gui/images bin/avrora/gui
 
 cck:
 	@$(JAVAC) $(CFLAGS) $(CCK_SRC)

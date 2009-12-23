@@ -29,17 +29,17 @@ import java.util.*;
  * @author Rodolfo de Paz
  * it handles noise file
  */
-public class Noise {
+public class noise {
 
     private static List noise = new ArrayList();
 
     /** Creates a new instance of Noise from file */
-    public Noise(String fileName) throws IOException {
+    public noise(String fileName) throws IOException {
         parse(new BufferedReader(new FileReader(fileName)));
     }
 
     /** Creates a new instance of Noise when there isn't noise file */
-    public Noise() {
+    public noise() {
         noise.add(new Integer(-95));
     }
 

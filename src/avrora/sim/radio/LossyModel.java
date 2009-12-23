@@ -133,11 +133,11 @@ public class LossyModel implements Medium.Arbitrator {
     }
 
     public int getNoise(int index){
-        if (avrora.sim.radio.Noise.sizeNoise() == 1) return avrora.sim.radio.Noise.getNoise(0);
+        if (noise.sizeNoise() == 1) return noise.getNoise(0);
         else {
-                index = index % avrora.sim.radio.Noise.sizeNoise();
+                index = index % noise.sizeNoise();
         }
-        return avrora.sim.radio.Noise.getNoise(index);
+        return noise.getNoise(index);
 
     }
 
