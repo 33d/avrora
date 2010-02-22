@@ -22,6 +22,8 @@ package avrora.sim.radio;
 
 import java.util.*;
 import avrora.sim.state.Complex;
+import avrora.sim.radio.Topology;
+
 /**
  * The <code>LossyModel</code> definition.
  *
@@ -36,17 +38,6 @@ public class LossyModel implements Medium.Arbitrator {
     protected final double u = Math.sqrt((1-Math.pow(lambda,2D)));
     protected double Csf,Sf;
     protected boolean first = true;
-
-    public static final class Position {
-        public final double x,y,z,rho;
-
-        public Position(double x, double y, double z, double rho) {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-            this.rho = rho;
-        }
-    }
 
     public static final class Noise{
         public final ArrayList Noise;
@@ -121,13 +112,7 @@ public class LossyModel implements Medium.Arbitrator {
         }
     }
 
-    public void setPosition(Radio radio, double x, double y, double z, double rho) {
-        Position pos = new Position(x, y, z, rho);
-        positions.put(radio.getTransmitter(), pos);
-        positions.put(radio.getReceiver(), pos);
-    }
-
-    public void setPosition(Radio radio, Position pos) {
+    public void setPosition(Radio radio, Topology.Position pos) {
         positions.put(radio.getTransmitter(), pos);
         positions.put(radio.getReceiver(), pos);
     }
@@ -144,8 +129,8 @@ public class LossyModel implements Medium.Arbitrator {
     protected double distance(Medium.Transmitter t, Medium.Receiver r) {
         //Distance computed from mote 3D coordinates of topology file
         double dist = 0;
-        Position a = (Position)positions.get(t);
-        Position b = (Position)positions.get(r);
+        Topology.Position a = (Topology.Position)positions.get(t);
+        Topology.Position b = (Topology.Position)positions.get(r);
         if ( a != null && b != null) {
             double dx = a.x - b.x;
             double dy = a.y - b.y;
@@ -159,8 +144,8 @@ public class LossyModel implements Medium.Arbitrator {
         /*Density of obstacles computed as the maximum rho between transmitter and
         receiver motes inserted in topology file*/
         double rho = 0D;
-        Position a = (Position)positions.get(t);
-        Position b = (Position)positions.get(r);
+        Topology.Position a = (Topology.Position)positions.get(t);
+        Topology.Position b = (Topology.Position)positions.get(r);
         if ( a != null && b != null) {
             rho = Math.max(a.rho,b.rho);
         }

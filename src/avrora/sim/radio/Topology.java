@@ -36,7 +36,11 @@
 
 package avrora.sim.radio;
 
-import cck.util.Util;
+import avrora.sim.Simulation;
+
+import cck.help.HelpCategory;
+import cck.util.Options;
+
 import java.io.*;
 import java.util.*;
 
@@ -45,84 +49,58 @@ import java.util.*;
  *
  * @author Olaf Landsiedel
  * @author Rodolfo de Paz
+ * @author Daniel Minder
  */
-public class Topology {
+public abstract class Topology extends HelpCategory {
+
+    public static class Position {
+        public double x,y,z,rho;
+
+        public Position(double x, double y, double z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.rho = 0;
+        }
+        
+        public Position(double x, double y, double z, double rho) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.rho = rho;
+        }
+    }
 
     //structure of the node positions
-    private final ArrayList nodes;
-    //radiomodel boolean parameter
-    private final boolean lossyradiomodel;
+    protected final ArrayList positions;
+    protected final ArrayList nodes;
 
     /**
      * new topology
      *
-     * @param fileName file to parse for topology
-     * @param lossy boolean parameter to say which radio model is
+     * @param h the help item for the topology as string
+     * @param o the options representing the known and unknown options from the command line
      */
-    public Topology(String fileName, boolean lossy) throws IOException {
+    protected Topology(String h) {
+        super("topology", h);
+        addSection("TOPOLOGY OVERVIEW", help);
+        addOptionSection("Help for the options accepted by this topology is below.", options);
+      
+        positions = new ArrayList();
         nodes = new ArrayList();
-        lossyradiomodel = lossy;
-        parse(new BufferedReader(new FileReader(fileName)));
-
     }
 
-    private void parse(BufferedReader f) throws IOException {
-        String line;
-        while ((line = f.readLine()) != null) {
-            parseLine(line);
-        }
-        f.close();
+    public Position getPosition(int id) {
+        return ((Position)positions.get(id));
     }
-
-    /**
-     * parse one line of the file
-     *
-     * @param line
-     */
-    private void parseLine(String line) {
-        String nodeName = "";
-        double[] positions = new double[4];
-        //check for comment
-        if (!line.startsWith("#")) {
-            StringTokenizer tokenizer = new StringTokenizer(line, " ");
-            int count = 0;
-            while (tokenizer.hasMoreTokens() && count < 5) {
-                try {
-                    if (count == 0)
-                        nodeName = tokenizer.nextToken();
-                    else {
-                        //positions[count - 1] = Integer.parseInt(tokenizer.nextToken());
-                        positions[count - 1] = Double.parseDouble(tokenizer.nextToken());
-                    }
-                    count++;
-                } catch (NoSuchElementException e) {
-                    throw Util.failure("Error reading topology tokens");
-                }
-            }
-            if (lossyradiomodel){
-                if (count == 4) {
-                    //found 4 tokens so we won't have obstacles (rho = 0)
-                    nodes.add(new LossyModel.Position(positions[0], positions[1], positions[2], 0.0));
-                }else if (count == 5){
-                    //found 5 tokens so density of obstacles is included in topology file
-                    nodes.add(new LossyModel.Position(positions[0], positions[1], positions[2], positions[3]));
-                }
-            }else{                         
-                if (count == 4) {
-                    //found 4 tokens 
-                    nodes.add(new RadiusModel.Position(positions[0], positions[1], positions[2]));
-                }else if (count == 5){
-                    //found 5 tokens it's an error here
-                    throw Util.failure("Error reading topology tokens");
-                }                
-            }            
-        }
+    
+    public void addNode(Simulation.Node node) {
+        nodes.add(node);
     }
-
-    public LossyModel.Position getPosition(int id) {
-        return ((LossyModel.Position)nodes.get(id));
+    
+    public void processOptions(Options o) {
+        options.process(o);
     }
-    public RadiusModel.Position getPositioninRadius(int id) {
-        return ((RadiusModel.Position)nodes.get(id));
-    }
+    
+    public abstract void start();
 }

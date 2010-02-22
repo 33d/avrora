@@ -178,6 +178,17 @@ public class ByteFIFO {
         head = save_head;
         used = save_used;        
     }
+    
+    public void dropLast() {
+        // how many bytes have been read since saveState()?
+        int readBytes = head > save_head ? head - save_head : data.length-save_head+head;
+        if (readBytes > save_used) {  // more bytes read than were available at saveState() time
+            used = 0;  // now it's empty
+        }
+        else {
+            used = save_used - readBytes;  // drop those that have been added since saveState()
+        }
+    }
 
     public void clear() {
         overflow = false;

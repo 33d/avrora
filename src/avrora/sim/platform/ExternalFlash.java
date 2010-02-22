@@ -168,7 +168,7 @@ public class ExternalFlash {
         mcu.getPin("PD2").connectInput(new PD2Input());
 
         //setup energy recording
-        new Energy("flash", modeAmpere, stateMachine, sim.getSimulation().getEnergyControl());
+        new Energy("flash", modeAmpere, stateMachine, sim.getEnergyControl());
     }
 
     private Page getMemoryPage(int num) {

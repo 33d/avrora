@@ -111,7 +111,7 @@ public class LED implements Microcontroller.Pin.Output {
 
         state = new FiniteStateMachine(clk, startMode, modeName, 0);
         probe = new LEDProbe();
-        new Energy(c, modeAmpere, state, sim.getSimulation().getEnergyControl());
+        new Energy(c, modeAmpere, state, sim.getEnergyControl());
     }
 
     public void write(boolean level) {

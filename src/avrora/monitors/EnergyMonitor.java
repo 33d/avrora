@@ -102,7 +102,7 @@ public class EnergyMonitor extends MonitorFactory {
             this.platform = s.getMicrocontroller().getPlatform();
             //activate energy monitoring....
             //so the state machine is set up for energy monitoring when needed
-            energyControl = s.getSimulation().getEnergyControl();
+            energyControl = s.getEnergyControl();
             energyControl.activate();
 
             if ( (energy = BATTERY.get()) > 0 ) {

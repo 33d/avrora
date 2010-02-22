@@ -120,7 +120,6 @@ public class MicaZ extends Platform {
         SPI spi = (SPI)amcu.getDevice("spi");
         spi.connect(radio.spiInterface);
         addDevice("radio", radio);
-        // TODO: install FIFOP pin.
         radio.FIFOP_interrupt = mcu.getProperties().getInterrupt("INT6");
         // install the input capture pin.
         Timer16Bit timer1 = (Timer16Bit)amcu.getDevice("timer1");

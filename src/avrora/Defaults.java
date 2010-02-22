@@ -42,6 +42,7 @@ import avrora.sim.Simulator;
 import avrora.sim.clock.ClockDomain;
 import avrora.sim.mcu.*;
 import avrora.sim.platform.*;
+import avrora.sim.radio.*;
 import avrora.sim.types.*;
 import avrora.syntax.atmel.AtmelProgramReader;
 import avrora.syntax.elf.ELFParser;
@@ -72,6 +73,7 @@ public class Defaults {
     private static ClassMap harnessMap;
     private static ClassMap monitorMap;
     private static ClassMap simMap;
+    private static ClassMap topologies;
 
     private static synchronized void addAll() {
         addMicrocontrollers();
@@ -81,6 +83,7 @@ public class Defaults {
         addTestHarnesses();
         addMonitors();
         addSimulations();
+        addTopologies();
         ArchitectureRegistry.addArchitectures();
     }
 
@@ -230,6 +233,24 @@ public class Defaults {
         }
     }
 
+    private static synchronized void addTopologies() {
+        if (topologies == null) {
+            topologies = new ClassMap("Topology", Topology.class);
+            //-- DEFAULT TOPOLOGIES
+            topologies.addClass("static", TopologyStatic.class);
+            topologies.addClass("rwp", TopologyRWP.class);
+            // plug in a new help category for simulations accesible with "-help topologies"
+            HelpCategory hc = new HelpCategory("topologies", "Help for supported topology types.");
+            hc.addOptionValueSection("TOPOLOGY TYPES",
+                    "Avrora supports different types of topolgies using the \"-topology\" command " +
+                    "line option. This option works only for sensor-network simulation. Note that a " +
+                    "topology must be set to use a specific radio model.",
+                    "-topology", topologies);
+            addMainCategory(hc);
+            addSubCategories(topologies);
+        }
+    }
+
     /**
      * The <code>getMicrocontroller()</code> method gets the microcontroller factory corresponding
      * to the given name represented as a string. This string can represent a short name for the
@@ -304,6 +325,11 @@ public class Defaults {
         addSimulations();
         // TODO: add a simulation factory
         return (Simulation)simMap.getObjectOfClass(s);
+    }
+
+     public static Topology getTopology(String s) {
+        addTopologies();
+        return (Topology)topologies.getObjectOfClass(s);
     }
 
     /**

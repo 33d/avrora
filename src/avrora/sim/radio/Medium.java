@@ -411,11 +411,9 @@ public class Medium {
                     // we return val in order to get rssi and corr value
                     char val = medium.arbitrator.mergeTransmissions(Receiver.this, it, oneBitBeforeNow - BYTE_SIZE, (int) clock.cyclesToMillis(clock.getCount()));
                     //store high byte for corrupted bytes
-                    int hval = (int) (val >>> 8);
-                    int value = (int) (0xff & nextByte(true, (byte) val));
-                    value |= (hval) & (value << 8);
-                    value |= hval;
-                    val = (char) value;
+                    int newval = (int) (val & 0xff00);
+                    newval |= (int) (0xff & nextByte(true, (byte) val));
+                    val = (char) newval;
                     if (probeList != null) probeList.fireAfterReceive(Receiver.this, val);
                     clock.insertEvent(this, cyclesPerByte);
 

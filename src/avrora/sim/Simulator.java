@@ -38,6 +38,7 @@ import avrora.sim.clock.MainClock;
 import avrora.sim.mcu.Microcontroller;
 import avrora.sim.output.EventBuffer;
 import avrora.sim.output.SimPrinter;
+import avrora.sim.energy.EnergyControl;
 
 /**
  * The <code>Simulator</code> class implements a full processor simulator for the AVR instruction set. It is
@@ -88,6 +89,8 @@ public class Simulator {
      */
     protected EventBuffer events;
 
+    protected EnergyControl energyControl;
+
     /**
      * The constructor creates the internal data structures and initial state of the processor. It constructs
      * an instance of the simulator that is ready to have devices attached, IO registers probed, and probes
@@ -110,6 +113,7 @@ public class Simulator {
         clock = mcu.getClockDomain().getMainClock();
         interpreter = f.newInterpreter(this, program, microcontroller.getProperties());
         events = new EventBuffer(this);
+        energyControl = new EnergyControl();
     }
 
     /**
@@ -501,6 +505,10 @@ public class Simulator {
         return simulation.getPrinter(this);
     }
 
+    public EnergyControl getEnergyControl() {
+        return energyControl;
+    }
+    
     /**
      * The <code>getState()</code> retrieves a reference to the current state of the simulation, including the
      * values of all registers, the SRAM, the IO register, the program memory, program counter, etc. This

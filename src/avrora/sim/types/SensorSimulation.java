@@ -32,6 +32,7 @@
 
 package avrora.sim.types;
 
+import avrora.Defaults;
 import avrora.Main;
 import avrora.core.*;
 import avrora.sim.*;
@@ -61,7 +62,7 @@ public class SensorSimulation extends Simulation {
     public static String HELP = "The sensor network simulation is used for simulating multiple sensor nodes " +
             "simultaneously. These nodes can communicate with each other wirelessly to exchange packets that " +
             "include sensor data and routing information for a multi-hop network. Currently, only the \"mica2\" " +
-            "platform sensor nodes are supported.";
+            "and \"micaz\" platform sensor nodes are supported.";
 
     public final Option.List NODECOUNT = newOptionList("nodecount", "1",
             "This option is used to specify the number of nodes to be instantiated. " +
@@ -70,12 +71,11 @@ public class SensorSimulation extends Simulation {
             "when set to \"1,2\" one node will be created with the first program loaded onto it, " +
             "and two nodes created with the second program loaded onto them.");
     public final Option.Str TOPOLOGY = newOption("topology", "",
-            "This option can be used to specify the name of " +
-            "a file that contains information about the topology of the network. " +
-            "When this option is specified. the free space radio model will be used " +
+            "This option can be used to specifcy to topology (static, rwp). " +
+            "When this option is specified, the radius or free-space radio model will be used " +
             "to model radio propagation.");
     public final Option.Bool LOSSY_MODEL = newOption("lossy-model",false,
-            "When this option is set, the radio model takes into account Noise and fadings thus" +
+            "When this option is set, the radio model takes into account Noise and fadings thus " +
             "implementing in micaz platform the correlation, cca and rssi functions.");
     public final Option.Str NOISE = newOption("Noise", "",
             "This option can be used to specify the name of " +
@@ -218,31 +218,28 @@ public class SensorSimulation extends Simulation {
             }
             return cc1000_medium;
         }
+        
         private void createRadioModel() {
-           if (topology == null && !TOPOLOGY.isBlank()) {
-                 try {
-                    if (LOSSY_MODEL.get()){
-                        topology = new Topology(TOPOLOGY.get(),true);
-                        lossyModel = new LossyModel();
-                    }
-                    else{
-                        topology = new Topology(TOPOLOGY.get(),false);
-                        radiusModel = new RadiusModel(1.0, RANGE.get());
-                    }
-                 } catch (IOException e) {
-                     throw Util.unexpected(e);
-                 }
-           }
+           if (topology != null) {
+                if (LOSSY_MODEL.get()){
+                    lossyModel = new LossyModel();
+                }
+                else {
+                    radiusModel = new RadiusModel(1.0, RANGE.get());
+                }
+            }
         }
 
 
         private void setNodePosition() {
-            if (LOSSY_MODEL.get()){
-                LossyModel.Position p = topology.getPosition(id);
-                if (p != null && radio != null) lossyModel.setPosition(radio, p);
-            }else{
-                RadiusModel.Position p = topology.getPositioninRadius(id);
-                if (p != null && radio != null) radiusModel.setPosition(radio, p);
+            topology.addNode(this);
+            Topology.Position p = topology.getPosition(id);
+            if (p != null && radio != null) {
+                if (LOSSY_MODEL.get()) {
+                    lossyModel.setPosition(radio, p);
+                }else{
+                    radiusModel.setPosition(radio, p);
+                }
             }
         }
 
@@ -333,6 +330,9 @@ public class SensorSimulation extends Simulation {
         // build the synchronizer
         synchronizer = new RippleSynchronizer(100000, null);
 
+        // create the topology
+        processTopology();
+        
         // create the nodes based on arguments
         createNodes(args, pf);
 
@@ -419,4 +419,12 @@ public class SensorSimulation extends Simulation {
         return st;
     }
 
+    private void processTopology() {
+        if (!TOPOLOGY.isBlank()) {
+            topology = Defaults.getTopology(TOPOLOGY.get());
+            // Util.userError("No such topology model", TOPOLOGY.get());
+            topology.processOptions(options);
+            topology.start();
+        }
+    }
 }

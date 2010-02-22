@@ -374,7 +374,7 @@ public class ATMega128New extends ATMegaClassic {
         MCUCR_reg = getIOReg("MCUCR");
         installPins();
         installDevices();
-        new Energy("CPU", modeAmpere, sleepState, sim.getEnergyControl());
+        new Energy("CPU", modeAmpere, sleepState, simulator.getEnergyControl());
 
         // Jacob's temporary addition for bootloader
         //interpreter.setBootPC(0x1E000);

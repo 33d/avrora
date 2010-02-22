@@ -158,36 +158,50 @@ public class PacketMonitor extends MonitorFactory {
                 return;
             }
             if (cc2420radio) {
-                //If bytes were lost in the middle of the packet do not show them
-                boolean lostBytesinPacket = false;
-                for (int cnt = 0; cnt < bufferPos; cnt++) {
-                    char c = bufferData[cnt];
-                    switch (cnt) {
-                        case 1:
-                        case 2:
-                        case 3:
-                            if (c != '\u0000') lostBytesinPacket = true;
-                            break;
-                        case 4:
-                            if (c != '\u000f') lostBytesinPacket = true;
-                            break;
-                        case 5:
-                            if (c != '\u00A7') lostBytesinPacket = true;
-                            break;
-                        case 6:
-                            if (c != (char)(bufferPos - 6)) lostBytesinPacket = true;
-                            break;
-                        default:
-                            break;
+                if (bufferPos >= 5) {  // smaller packets might be artefacts due to the CC2420 implementation
+                    // look for the beginning of the packet since the transmission might start before
+                    for (int cnt = 4; cnt < bufferPos; cnt++) {
+                        if (((int)bufferData[cnt-1] & 0xff) == 0x0F && ((int)bufferData[cnt] & 0xff) == 0xA7) {
+                            // found a new packet. align it in buffer to normal position, but only if it's not already there
+                            if (cnt > 4) {
+                                bufferPos = bufferPos - cnt +4;  // new length
+                                System.arraycopy(bufferData, cnt-4, bufferData, 0, bufferPos);
+                            }
+                        }
                     }
-                }
-                if (!lostBytesinPacket) {
-                    packetsReceived++;
-                    if ( showPackets) {
-                        printer.printBuffer(renderPacket("<==== "));
+                    
+                    //If bytes were lost in the middle of the packet do not show them
+                    boolean lostBytesinPacket = false;
+                    for (int cnt = 0; cnt < bufferPos; cnt++) {
+                        int c = (int)bufferData[cnt] & 0xff;  // consider only the low byte without the corruption information
+                        switch (cnt) {
+                            case 0:
+                            case 1:
+                            case 2:
+                                if (c != 0x00) lostBytesinPacket = true;  // actually, the receiver will recognize the packet anyway!
+                                break;
+                            case 3:
+                                if (c != 0x0F) lostBytesinPacket = true;
+                                break;
+                            case 4:
+                                if (c != 0xA7) lostBytesinPacket = true;
+                                break;
+                            case 5:
+                                if (c != bufferPos - 6) lostBytesinPacket = true;
+                                break;
+                            default:
+                                break;
+                        }
                     }
-                } else {
-                    packetsLostinMiddle++;
+                    
+                    if (!lostBytesinPacket) {
+                        packetsReceived++;
+                        if ( showPackets) {
+                            printer.printBuffer(renderPacket("<==== "));
+                        }
+                    } else {
+                        packetsLostinMiddle++;
+                    }
                 }
 
             } else {

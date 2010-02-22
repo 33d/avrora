@@ -115,7 +115,6 @@ public class CC2420Radio implements Radio {
     private static final int RAMSECURITYBANK_SIZE = 113;
 
     private static final int XOSC_START_TIME = 1000;// oscillator start time
-    private static final int PLL_LOCK_TIME = 192;// for startup and turnaround times
 
     //-- Simulation objects -----------------------------------------------
     protected final Microcontroller mcu;
@@ -127,7 +126,8 @@ public class CC2420Radio implements Radio {
     protected final byte[] RAMSecurityRegisters = new byte[RAMSECURITYBANK_SIZE];
     protected final ByteFIFO txFIFO = new ByteFIFO(FIFO_SIZE);
     protected final ByteFIFO rxFIFO = new ByteFIFO(FIFO_SIZE);
-    protected List BERlist = new ArrayList();
+    protected double BERtotal = 0.0D;
+    protected int BERcount = 0;
 
     protected Medium medium;
     protected Transmitter transmitter;
@@ -138,12 +138,8 @@ public class CC2420Radio implements Radio {
     // The register here is used in the simulation implementation to
     // simplify the handling of radio states and state transitions.
     protected final Register statusRegister = new Register(8);
-    protected boolean startingOscillator;
-    protected boolean TXstartingUp;
-    protected boolean RXstartingUp;
-    protected boolean SRXDEC_switched;
-    protected boolean STXENC_switched;
-
+    protected boolean startingOscillator = false;
+    
     //-- Views of bits in the status "register" ---------------------------
     protected final BooleanView oscStable = RegisterUtil.booleanView(statusRegister, 6);
     protected final BooleanView txUnderflow = RegisterUtil.booleanView(statusRegister, 5);
@@ -190,8 +186,12 @@ public class CC2420Radio implements Radio {
     protected boolean SFD_active;
 
     //Acks variables
-    protected boolean SendAck;
-    protected boolean SendAckPend;
+    public static final int SENDACK_NONE = 0;
+    public static final int SENDACK_NORMAL = 1;
+    public static final int SENDACK_PEND = 2;
+    protected int SendAck;
+    protected boolean AutoAckPend;
+    protected boolean lastCRCok;
     protected byte DSN;
 
     //Address recognition variables
@@ -199,10 +199,10 @@ public class CC2420Radio implements Radio {
     protected byte[] macPANId;
     protected byte[] ShortAddr;
     protected byte[] macShortAddr;
-    protected static final byte[] SHORT_BROADCAST_ADDR = {15, 15};
+    protected static final byte[] SHORT_BROADCAST_ADDR = {-1, -1};
     protected byte[] LongAdr;
     protected byte[] IEEEAdr;
-    protected static final byte[] LONG_BROADCAST_ADDR = {15, 15, 15, 15, 15, 15, 15, 15};
+    protected static final byte[] LONG_BROADCAST_ADDR = {-1, -1, -1, -1, -1, -1, -1, -1};
 
     //LUT from cubic spline interpolation with all transmission power values
     protected static final double [] POWER_dBm = {-37.917,-32.984,-28.697,-25,
@@ -249,19 +249,14 @@ public class CC2420Radio implements Radio {
         setMedium(createMedium(null, null));
 
         //setup energy recording
-        Simulator simulator = mcu.getSimulator();
-
-        stateMachine = new FiniteStateMachine(simulator.getClock(), CC2420Energy.startMode, allModeNames, ttm);
-
-        new Energy("Radio", CC2420Energy.modeAmpere, stateMachine, sim.getSimulation().getEnergyControl());
+        stateMachine = new FiniteStateMachine(sim.getClock(), CC2420Energy.startMode, allModeNames, ttm);
+        new Energy("Radio", CC2420Energy.modeAmpere, stateMachine, sim.getEnergyControl());
 
         // reset all registers
         reset();
 
         // get debugging channel.
-        printer = mcu.getSimulator().getPrinter("radio.cc2420");
-
-
+        printer = sim.getPrinter("radio.cc2420");
     }
 
     /**
@@ -297,16 +292,17 @@ public class CC2420Radio implements Radio {
         CCA_active = true;
         SFD_active = true;
 
-        SendAck = false;  // reset these internal variables
-        SendAckPend = false;
+        SendAck = SENDACK_NONE;  // reset these internal variables
+        AutoAckPend = false;
+        lastCRCok = false;
         ClearFlag = false;
 
         // reset pins.
         FIFO_pin.level.setValue(!FIFO_active);
         FIFOP_pin.level.setValue(!FIFOP_active);
-
-        transmitter.endTransmit();
-        receiver.endReceive();
+        
+        transmitter.shutdown();
+        receiver.shutdown();
     }
 
     public void setSFDView(BooleanView sfd) {
@@ -370,81 +366,122 @@ public class CC2420Radio implements Radio {
 
     private void setSFDMux(int sfdMux) {
         // TODO: SFD multiplexor
+        if (sfdMux != 0) {
+            throw Util.unimplemented();
+        }
     }
 
     private void setCCAMux(int ccaMux) {
         // TODO: handle all the possible CCA multiplexing sources
         // and possibility of active low.
         if (ccaMux == 24) CCA_pin.level = oscStable;
-        else CCA_pin.level = CCA_assessor;
+        else {
+            if (ccaMux != 0) {
+                throw Util.unimplemented();
+            }
+            CCA_pin.level = CCA_assessor;
+        }
     }
 
     void strobe(int addr) {
         if (printer != null) {
             printer.println("CC2420 Strobe " + strobeName(addr));
         }
-        switch (addr) {
-            case SNOP:
-                break;
-            case SXOSCON:
+        if (!oscStable.getValue()) {
+            if (addr == SXOSCON) {
                 startOscillator();
-                break;
-            case STXCAL:
-                break;
-            case SRXON:
-                transmitter.shutdown();
-                receiver.startup();
-                break;
-            case STXONCCA:
-                if (CCA_assessor.getValue()) {
+            }
+        }
+        else {
+            switch (addr) {
+                case SNOP:
+                    break;
+                case SXOSCON:
+                    // was handled above
+                    break;
+                case STXCAL:
+                    break;
+                case SRXON:
+                    if (!txActive.getValue()){
+                        // should not interrupt transmissions according to state machine
+                        // after a transmission RX mode is turned on automatically
+                        transmitter.shutdown();
+                        receiver.startup();
+                    }
+                    break;
+                case STXONCCA:
+                    if (CCA_assessor.getValue()) {
+                        receiver.shutdown();
+                        transmitter.startup();
+                    }
+                    break;
+                case STXON:
                     receiver.shutdown();
                     transmitter.startup();
-                }
-                break;
-            case STXON:
-                receiver.shutdown();
-                transmitter.startup();
-                break;
-            case SRFOFF:
-                stateMachine.transition(2);//change to idle state
-                break;
-            case SXOSCOFF:
-                oscStable.setValue(false);
-                stateMachine.transition(1);//change to power down state
-                break;
-            case SFLUSHRX:
-                rxFIFO.clear();
-                receiver.resetOverflow();
-                FIFO_pin.level.setValue(!FIFO_active);
-                FIFOP_pin.level.setValue(!FIFOP_active);
-                break;
-            case SFLUSHTX:
-                txFIFO.clear();
-                txUnderflow.setValue(false);
-                break;
-            case SACK:
-                SendAck = true;
-                if (!receiver.locked) {
+                    break;
+                case SRFOFF:
+                    //change to idle state
                     receiver.shutdown();
-                    transmitter.startup();
-                }
-                break;
-            case SACKPEND:
-                SendAckPend = true;
-                if (!receiver.locked) {
+                    transmitter.shutdown();
+                    stateMachine.transition(2);  // idle state
+                    break;
+                case SXOSCOFF:
+                    // stop the tickers in receiver and transmitter
                     receiver.shutdown();
-                    transmitter.startup();
-                }
-                break;
-            case SRXDEC:
-                // start RXFIFO in-line decryption/authentication as set by SPI_SEC_MODE
-                break;
-            case STXENC:
-                // start TXFIFO in-line encryption/authentication as set by SPI_SEC_MODE
-                break;
-            case SAES:
-                // SPI_SEC_MODE is not required to be 0, but the encrypt. module must be idle; else strobe is ignored
-                break;
+                    transmitter.shutdown();
+                    // it is not clear from the data sheet if we have to do more here, e.g. resetting the FIFO pins
+                    oscStable.setValue(false);
+                    stateMachine.transition(1);//change to power down state
+                    break;
+                case SFLUSHRX:
+                    rxFIFO.clear();
+                    receiver.resetOverflow();
+                    FIFO_pin.level.setValue(!FIFO_active);
+                    FIFOP_pin.level.setValue(!FIFOP_active);
+                    SFD_value.setValue(!SFD_active);  // needed in case of an overflow
+                    break;
+                case SFLUSHTX:
+                    txFIFO.clear();
+                    txUnderflow.setValue(false);
+                    break;
+                case SACK:
+                    AutoAckPend = false;  // AutoAck sends pending flag until SACK is issued
+                    if (!receiver.inPacket()) {
+                        // if reception is over ACK is only sent when the CRC was ok
+                        if (lastCRCok) {
+                            SendAck = SENDACK_NORMAL;
+                            receiver.shutdown();
+                            transmitter.startup();
+                        }
+                    }
+                    else {
+                        // otherwise it might be sent when packet is complete
+                        SendAck = SENDACK_NORMAL;
+                    }
+                    break;
+                case SACKPEND:
+                    AutoAckPend = true;  // AutoAck sends pending flag until SACK is issued
+                    if (!receiver.inPacket()) {  // see SACK
+                        if (lastCRCok) {
+                            SendAck = SENDACK_PEND;
+                            receiver.shutdown();
+                            transmitter.startup();
+                        }
+                    }
+                    else {
+                        SendAck = SENDACK_PEND;
+                    }
+                    break;
+                case SRXDEC:
+                    // start RXFIFO in-line decryption/authentication as set by SPI_SEC_MODE
+                    throw Util.unimplemented();
+                case STXENC:
+                    // start TXFIFO in-line encryption/authentication as set by SPI_SEC_MODE
+                    throw Util.unimplemented();
+                case SAES:
+                    // SPI_SEC_MODE is not required to be 0, but the encrypt. module must be idle; else strobe is ignored
+                    throw Util.unimplemented();
+            }
         }
     }
 
@@ -453,11 +490,13 @@ public class CC2420Radio implements Radio {
             startingOscillator = true;
             sim.insertEvent(new Simulator.Event() {
                 public void fire() {
-                    oscStable.setValue(true);
-                    startingOscillator = false;
-                    stateMachine.transition(2);//change to idle state
-                    if (printer != null) {
-                       printer.println("CC2420 Oscillator established");
+                    if (startingOscillator) {  // just in case the voltage regulator has been switched off in the meantime
+                        oscStable.setValue(true);
+                        startingOscillator = false;
+                        stateMachine.transition(2);//change to idle state
+                        if (printer != null) {
+                            printer.println("CC2420 Oscillator established");
+                        }
                     }
                 }
             }, toCycles(XOSC_START_TIME));
@@ -547,6 +586,10 @@ public class CC2420Radio implements Radio {
             }
             return status;
         } else if (configByteCnt == 2) {
+            if (!oscStable.getValue() && configCommand != CMD_R_REG && configCommand != CMD_W_REG) {
+                // with crystal oscillator disabled only register access is possible
+                return 0;
+            }
             // the second byte is the MSB for a write, unused for read
             switch (configCommand) {
                 case CMD_R_REG:
@@ -569,6 +612,10 @@ public class CC2420Radio implements Radio {
                     return 0;
             }
         } else {
+            if (!oscStable.getValue() && configCommand != CMD_R_REG && configCommand != CMD_W_REG) {
+                // with crystal oscillator disabled only register access is possible
+                return 0;
+            }
             // the third byte completes a read or write register
             // while subsequent bytes are valid for fifo and RAM accesses
             switch (configCommand) {
@@ -624,9 +671,10 @@ public class CC2420Radio implements Radio {
         }
         RAMSecurityRegisters[address] = value;
         //If RAM PANId = 0xffff set IOCFG0.BCN_ACCEPT
-        if ((RAMSecurityRegisters[104] == 255) && (RAMSecurityRegisters[105] == 255)) {
-            BCN_ACCEPT.setValue(true);
-        }
+        // Changed: NO! The data sheet says that BCN_ACCEPT should be set when PANId=0xffff, but it's not set automatically!
+//        if ((RAMSecurityRegisters[104] == 255) && (RAMSecurityRegisters[105] == 255)) {
+//            BCN_ACCEPT.setValue(true);
+//        }
         return value;
     }
 
@@ -639,7 +687,9 @@ public class CC2420Radio implements Radio {
             if (fifo.empty()) {
                 // reset the FIFO pin when the read FIFO is empty.
                 FIFO_pin.level.setValue(!FIFO_active);
-            } else if (fifo.size() < getFIFOThreshold()) {
+            }
+            if (fifo.size() < getFIFOThreshold()) {
+                // reset FIFOP pin when the number of bytes in the FIFO is below threshold
                 FIFOP_pin.level.setValue(!FIFOP_active);
             }
         }
@@ -651,7 +701,7 @@ public class CC2420Radio implements Radio {
             printer.println("CC2420 Write " + fifoName(fifo) + " <= " + StringUtil.toMultirepString(val, 8));
         }
         byte result = st ? getStatus() : 0;
-        if (getClearFlag()){
+        if (fifo == txFIFO && getClearFlag()){  // clear flag is only valid for txFIFO
             fifo.clear();
             ClearFlag = false;
         }
@@ -729,41 +779,54 @@ public class CC2420Radio implements Radio {
     }
 
     private void pinChange_VREN(boolean level) {
-      if (level) {
-        // the voltage regulator has been switched on
-        if (stateMachine.getCurrentState() == 0) {
-          // actually, there is a startup time for the voltage regulator
-          // but we assume here that it starts immediately
-          stateMachine.transition(1);//change to power down state
-          if (printer != null) {
-            printer.println("CC2420 Voltage Regulator started");
-          }
+        if (level) {
+            // the voltage regulator has been switched on
+                if (printer != null) {
+                    printer.println("CC2420 VREN current state = "+stateMachine.getCurrentState());
+                }
+          
+            if (stateMachine.getCurrentState() == 0) {
+                // actually, there is a startup time for the voltage regulator
+                // but we assume here that it starts immediately
+                stateMachine.transition(1);//change to power down state
+                if (printer != null) {
+                    printer.println("CC2420 Voltage Regulator started");
+                }
+            }
         }
-      }
-      else {
-        if (stateMachine.getCurrentState() > 0) {
-          // switch the chip off, but stop all things first
-          transmitter.endTransmit();
-          receiver.endReceive();
-          stateMachine.transition(0);//change to off state
-          if (printer != null) {
-            printer.println("CC2420 Voltage Regulator switched off");
-          }
+        else {
+            if (stateMachine.getCurrentState() > 0) {
+                // switch the chip off, but stop all things first
+                startingOscillator = false;
+                oscStable.setValue(false);
+                transmitter.shutdown();
+                receiver.shutdown();
+                stateMachine.transition(0);//change to off state
+                if (printer != null) {
+                    printer.println("CC2420 Voltage Regulator switched off");
+                }
+            }
         }
-      }
     }
 
     private void pinChange_RSTN(boolean level) {
-      if (!level) {
-        // high->low indicates reset
-        reset();
-        stateMachine.transition(1);//change to power down state
-        if (printer != null) {
-          printer.println("CC2420 reset by pin");
+        if (!level) {
+            // high->low indicates reset
+            reset();
+            stateMachine.transition(1);//change to power down state
+            if (printer != null) {
+                printer.println("CC2420 reset by pin");
+            }
         }
-      }
     }
 
+    // TODO: According to the CC2420 data sheet a 0xF in syncword means that
+    // this symbol is ignored (or transmitted as 0). Therefore, for the default
+    // syncword 00 7A should be transmitted (and not 0F 7A). The receiver should
+    // look for a 0 symbol, then for the syncword, but also ignoring 0xF. Therefore,
+    // for the default syncword 00 7A should be searched. Since for the default
+    // syncword this might result only in a minor difference I decided not to change it now.
+    
     private static final int TX_IN_PREAMBLE = 0;
     private static final int TX_SFD_1 = 1;
     private static final int TX_SFD_2 = 2;
@@ -772,6 +835,7 @@ public class CC2420Radio implements Radio {
     private static final int TX_CRC_1 = 5;
     private static final int TX_CRC_2 = 6;
     private static final int TX_END = 7;
+    private static final int TX_WAIT = 8;
 
     public class Transmitter extends Medium.Transmitter {
 
@@ -803,7 +867,7 @@ public class CC2420Radio implements Radio {
                     val = Arithmetic.high(registers[SYNCWORD]);
                     break;
                 case TX_LENGTH:
-                    if (SendAck || SendAckPend) {//ack frame
+                    if (SendAck != SENDACK_NONE) {//ack frame
                         wasAck = true;
                         length = 5;
                     } else {//data frame
@@ -815,23 +879,19 @@ public class CC2420Radio implements Radio {
                     counter = 0;
                     crc = 0;
                     val = (byte) length;
+                    // remark: it is not clear from the data sheet if SFD becomes active for an ACK frame. Probably not...
                     SFD_value.setValue(SFD_active);
                     break;
                 case TX_IN_PACKET:
-                    if (!SendAck && !SendAckPend) {//data frame
+                    if (SendAck == SENDACK_NONE) {//data frame
                         if (txFIFO.empty()) {
                             if (printer != null) {
-                              printer.println("txFIFO underflow");
+                              printer.println("CC2420 txFIFO underflow");
                             }
                             // a transmit underflow has occurred. set the flag and stop transmitting.
                             txUnderflow.setValue(true);
                             val = 0;
                             state = TX_END;
-                            // SFD is also set to inactive when an underflow occurs
-                            SFD_value.setValue(!SFD_active);
-                            // auto transition back to receive mode.
-                            shutdown();
-                            receiver.startup();// auto transition back to receive mode.
                             break;
                         }
                         //  no underflow occurred.
@@ -840,11 +900,11 @@ public class CC2420Radio implements Radio {
                     } else {//ack frame
                         switch (counter) {
                             case 0://FCF_low
-                                if (SendAck) {
+                                if (SendAck == SENDACK_NORMAL) {
                                     val = 2;
                                     break;
-                                } else if (SendAckPend) {
-                                    val = 9;
+                                } else if (SendAck == SENDACK_PEND) {
+                                    val = 0x12;  //  type ACK + frame pending flag
                                     break;
                                 }
                             case 1://FCF_hi
@@ -852,8 +912,7 @@ public class CC2420Radio implements Radio {
                                 break;
                             case 2://Sequence number
                                 val = DSN;
-                                if (SendAck) SendAck = false;
-                                else if (SendAckPend) SendAckPend = false;
+                                SendAck = SENDACK_NONE;
                                 break;
                         }
                         counter++;
@@ -878,26 +937,29 @@ public class CC2420Radio implements Radio {
                 case TX_CRC_2:
                     val = Arithmetic.high(crc);
                     state = TX_END;
-                    counter = 0;
-                    SFD_value.setValue(!SFD_active);
-                    if (!wasAck) {  //data frame only
-                      //After complete tx of data frame the txFIFO is automatically refilled
-                      txFIFO.refill();
-                      //writing txFIFO after frame transmitted will cause it to be flushed
-                      setClearFlag();
-                    }
-                    // auto transition back to receive mode.
-                    shutdown();
-                    receiver.startup();// auto transition back to receive mode.
-                    break;
-                    // and fall through.
-                default:
-                    state = TX_IN_PREAMBLE;
-                    counter = 0;
                     break;
             }
             if (printer != null) {
                 printer.println("CC2420 " + StringUtil.to0xHex(val, 2) + " --------> ");
+            }
+            // common handling of end of transmission
+            if (state == TX_END) {
+                // actually, this should be set low AFTER the crc, but we are not called at that time...
+                SFD_value.setValue(!SFD_active);
+            
+                if (!wasAck && !txUnderflow.getValue()) {  //data frame only and only when no underflow
+                    //After complete tx of data frame the txFIFO is automatically refilled
+                    txFIFO.refill();
+                    //writing txFIFO after frame transmitted will cause it to be flushed
+                    setClearFlag();
+                }
+                
+                // auto transition back to receive mode.
+                shutdown();
+                receiver.startup();// auto transition back to receive mode.
+                
+                // transmitter stays in this state until it is really switched off
+                state = TX_WAIT;
             }
             return val;
         }
@@ -908,28 +970,26 @@ public class CC2420Radio implements Radio {
         }
 
         void startup() {
-//            if (!txActive.getValue() && !TXstartingUp){
-//            TXstartingUp = true;
-//                sim.insertEvent(new Simulator.Event() {
-//                    public void fire() {
-//                        TXstartingUp = false;
-          if (!txActive.getValue()) {
-                        stateMachine.transition((readRegister(TXCTRL) & 0x1f)+4);//change to Tx(Level) state
-                        txActive.setValue(true);
-                        state = TX_IN_PREAMBLE;
-                        beginTransmit(getPower(),getFrequency());
-//                        if (printer != null) {
-//                            printer.println("TX Started Up");
-//                        }
-//                    }
-//                }, toCycles(PLL_LOCK_TIME));
-           }
-       }
+            if (!txActive.getValue()){
+                // the PLL lock time is implemented as the leadCycles in Medium!
+                txActive.setValue(true);
+                stateMachine.transition((readRegister(TXCTRL) & 0x1f)+4);//change to Tx(Level) state
+                state = TX_IN_PREAMBLE;
+                counter = 0;
+                beginTransmit(getPower(),getFrequency());
+                if (printer != null) {
+                    printer.println("CC2420 TX started");
+                }
+            }
+        }
 
         void shutdown() {
-            stateMachine.transition(2);//change to idle state
+            // note that the stateMachine.transition() is not called here any more!
             txActive.setValue(false);
             endTransmit();
+            if (printer != null) {
+                printer.println("CC2420 TX shutdown");
+            }
         }
     }
 
@@ -951,6 +1011,7 @@ public class CC2420Radio implements Radio {
     private static final int RECV_CRC_2 = 5;
     private static final int RECV_END_STATE = 6;
     private static final int RECV_OVERFLOW = 7;
+    private static final int RECV_WAIT = 8;
 
     public class Receiver extends Medium.Receiver {
         protected int state;
@@ -1009,61 +1070,69 @@ public class CC2420Radio implements Radio {
         }
 
         public void setBER (double BER){
-            BERlist.add(new Double(BER));
+            BERcount++;
+            if (BERcount > 5) {
+                BERtotal += BER;
+            }
         }
+        
         public double getPER (){
-            //compute average BER after SHR
-            double Total = 0.0D;
-            int size = BERlist.size();
-            for (int i = 5; i<BERlist.size(); i++) Total+=((Double)BERlist.get(i)).doubleValue();
-            BERlist.clear();
-            double BER = Total/(size-5);
-            //considering i.i.s errors i compute PER
-            return 1D-Math.pow((1D-BER),(size-5)*8);
+            double PER = 0.0D;
+            if (BERcount > 5) {
+                //compute average BER after SHR
+                PER = BERtotal/(BERcount-5);
+                //considering i.i.s errors i compute PER
+                PER = 1D-Math.pow((1D-PER),(BERcount-5)*8);
+            }
+            clearBER();
+            return PER;
         }
-
+        
+        public void clearBER() {
+            BERcount = 0;
+            BERtotal = 0.0D;
+        }
 
         public byte nextByte(boolean lock, byte b) {
+            if (state == RECV_END_STATE) {
+                state = RECV_SFD_SCAN; // to prevent loops when calling shutdown/endReceive
+                // packet ended before
+                if (SendAck != SENDACK_NONE && lastCRCok) {//Send Ack?
+                    shutdown();
+                    transmitter.startup();
+                } else {
+                    if (lock) {
+                        // the medium is still locked, so there could be more packets!
+                        // fire the probes manually
+                        if (probeList != null) probeList.fireAfterReceiveEnd(Receiver.this);
+                    }
+                }
+                return b;
+            }
+                
             if (!lock) {
                 // the transmission lock has been lost
-                SFD_value.setValue(!SFD_active);
                 switch (state) {
+                    case RECV_SFD_MATCHED_2:
                     case RECV_IN_PACKET:
-                        //packet lost in middle -> rxFIFO clearing and the
-                        //packet will not be passed to higher layers
-                        rxFIFO.clear();
+                    case RECV_CRC_1:
+                    case RECV_CRC_2:
+                        //packet lost in middle -> drop frame
+                        dropFrame();
+                        // fall through
+                    
+                    case RECV_SFD_MATCHED_1: // packet has just started
                         state = RECV_SFD_SCAN;
-                        break;
-                    case RECV_END_STATE:
-                        if (SendAck || SendAckPend) {//Send Ack?
-                            shutdown();
-                            transmitter.startup();
-                        } else {
-                            state = RECV_SFD_SCAN;
-                        }
-                        break;
-                    case RECV_OVERFLOW:
-                        //We enconter overflow
-                        break;
-                    default:
-                        // if we did not encounter overflow, return to the scan state.
-                        state = RECV_SFD_SCAN;
+                        SFD_value.setValue(!SFD_active);
                         break;
                 }
                 return b;
             }
+            
             if (printer != null) {
                 printer.println("CC2420 <======== " + StringUtil.to0xHex(b, 2));
             }
             switch (state) {
-                case RECV_SFD_SCAN:
-                    // check against the first byte of the SYNCWORD register.
-                    if (b == Arithmetic.low(registers[SYNCWORD])) {
-                        state = RECV_SFD_MATCHED_1;
-                    } else {
-                        state = RECV_SFD_SCAN;
-                    }
-                    break;
                 case RECV_SFD_MATCHED_1:
                     // check against the second byte of the SYNCWORD register.
                     if (b == Arithmetic.high(registers[SYNCWORD])) {
@@ -1073,32 +1142,61 @@ public class CC2420Radio implements Radio {
                     }
                     // fallthrough if we failed to match the second byte
                     // and try to match the first byte again.
+                case RECV_SFD_SCAN:
+                    // check against the first byte of the SYNCWORD register.
+                    if (b == Arithmetic.low(registers[SYNCWORD])) {
+                        state = RECV_SFD_MATCHED_1;
+                    } else {
+                        state = RECV_SFD_SCAN;
+                    }
+                    break;
 
                 case RECV_SFD_MATCHED_2:
                     // SFD matched. read the length from the next byte.
                     length = b & 0x7f;
-                    rxFIFO.add(b);
-                    counter = 0;
-                    state = RECV_IN_PACKET;
-                    crc = 0;
+                    if (length == 0) {  // ignore frames with 0 length
+                        SFD_value.setValue(!SFD_active);
+                        state = RECV_SFD_SCAN;
+                        break;
+                    }
+                    
+                    // save current position in rxFIFO as start of frame
+                    rxFIFO.saveState();
+                    if (fifoAdd(b)) {
+                        counter = 0;
+                        state = RECV_IN_PACKET;
+                        crc = 0;
+                    }
                     break;
+                
                 case RECV_IN_PACKET:
                     // we are in the body of the packet.
                     counter++;
-                    rxFIFO.add(b);
-                    if (rxFIFO.overFlow()) {
-                        // an RX overflow has occurred.
-                        FIFO_pin.level.setValue(!FIFO_active);
-                        signalFIFOP();
-                        state = RECV_OVERFLOW;
-                        break;
+                    if (!fifoAdd(b)) {
+                        break;  // overflow
                     }
 
-                    // no overflow occurred.
-                    FIFO_pin.level.setValue(FIFO_active);
-                    if (rxFIFO.size() >= getFIFOThreshold()) {
-                        signalFIFOP();
+                    //Address Recognition
+                    if (ADR_DECODE.getValue()) {
+                        boolean satisfied = matchAddress(b, counter);
+                        if (!satisfied) {
+                            //reject frame
+                            dropFrame();
+                            // wait for end of packet
+                            SFD_value.setValue(!SFD_active);
+                            state = RECV_WAIT;
+                            break;
+                        }
                     }
+                    else {
+                        // sequence number - save it outside of address recognition since it is needed for SACK/SACKPEND commands as well
+                        if (counter == 3 && (rxFIFO.peek(1) & 0x07) != 0 && (rxFIFO.peek(1) & 0x04) != 4) {
+                            DSN = b;
+                            lastCRCok = false;  // we have a new DSN now. Therefore, we cannot send an ACK for the last frame any more.
+                        }
+                    }
+                    
+                    // no overflow occurred and address ok
                     if (autoCRC.getValue()) {
                         crc = crcAccumulate(crc, b);
                         if (counter == length - 2) {
@@ -1107,21 +1205,11 @@ public class CC2420Radio implements Radio {
                         }
                     } else if (counter == length) {
                         // no AUTOCRC, but reached end of packet.
+                        signalFIFOP();
+                        SFD_value.setValue(!SFD_active);
+                        clearBER();  // will otherwise be done by getCorrelation() in state RECV_CRC_2
+                        lastCRCok = false;
                         state = RECV_END_STATE;
-                    }
-                    //Address Recognition
-                    if (state == RECV_IN_PACKET && ADR_DECODE.getValue()) {
-                        boolean satisfied = matchAddress(b, counter);
-                        if (!satisfied) {
-                            //reject frame
-                            FIFO_pin.level.setValue(!FIFO_active);
-                            unsignalFIFOP();
-                            rxFIFO.clear();
-                        }
-                    }
-                    else {
-                      // sequence number - save it outside of address recognition since it is needed for SACK/SACKPEND commands as well!!!
-                      if (counter == 3 && (rxFIFO.peek(1) & 0x07) != 0 && (rxFIFO.peek(1) & 0x04) != 4) DSN = b;
                     }
 
                     break;
@@ -1130,47 +1218,92 @@ public class CC2420Radio implements Radio {
                     state = RECV_CRC_2;
                     //RSSI value is written in this position of the rxFIFO
                     b = (byte)(readRegister(RSSI)&0x00ff);
-                    rxFIFO.add(b);
+                    fifoAdd(b);
                     break;
+                
                 case RECV_CRC_2:
                     state = RECV_END_STATE;
+                
                     char crcResult = (char) Arithmetic.word(crcLow, b);
+                    //Corr value and CRCok are written in this position of the rxFIFO
+                    b = (byte) ((byte)getCorrelation() & 0x7f);
                     if (crcResult == crc) {
-                        // signal FIFOP and unsignal SFD
+                        b |= 0x80;
+                        lastCRCok = true;
                         if (printer != null) {
                             printer.println("CC2420 CRC passed");
                         }
-                        //Corr value and CRCok are written in this position of the rxFIFO
-                        int corr = (int)getCorrelation();
-                        b = (byte)(corr|0x0080);
-                        rxFIFO.add(b);
-                        signalFIFOP();
-                        SFD_value.setValue(!SFD_active);
-                        if (autoACK.getValue() && (rxFIFO.peek(1) & 0x20) == 0x20) {//autoACK
-                            //send ack if we are not receiving ack frame
-                            if ((rxFIFO.peek(1) & 0x07) != 2) {
-                                if ((rxFIFO.peek(1) & 0x10) != 0x10) SendAck = true;
-                                else if ((rxFIFO.peek(1) & 0x10) == 0x10) SendAckPend = true;
-                            }
-                        }
-                    } else {
-                        // CRC failure: flush the packet.
+                    }
+                    else {
+                        // According to the CC2420 data sheet the frame is not rejected if the CRC is invalid!!!
+                        // reset ACK flags set by the SACK/SACKPEND commands since ACK is only sent when CRC is valid
+                        lastCRCok = false;
+                        SendAck = SENDACK_NONE;
                         if (printer != null) {
                             printer.println("CC2420 CRC failed");
                         }
-                        FIFO_pin.level.setValue(!FIFO_active);
-                        unsignalFIFOP();
-                        rxFIFO.clear();
                     }
+            
+                    if (fifoAdd(b)) {
+                        // signal FIFOP and unsignal SFD
+                        signalFIFOP();
+                        SFD_value.setValue(!SFD_active);
+                        if (lastCRCok && autoACK.getValue() && (rxFIFO.peek(1) & 0x20) == 0x20) {//autoACK
+                            //send ack if we are not receiving ack frame
+                            if ((rxFIFO.peek(1) & 0x07) != 2) {
+                                // the type of the ACK only depends on a previous received SACK or SACKPEND
+                                SendAck = AutoAckPend ? SENDACK_PEND : SENDACK_NORMAL;
+                            }
+                        }
+                    }
+                    
                     break;
                 case RECV_OVERFLOW:
                     // do nothing. we have encountered an overflow.
+                    break;
+                case RECV_WAIT:
+                    // just wait for the end of the packet
+                    if (++counter == length) {
+                        clearBER();  // will otherwise be done by getCorrelation()
+                        state = RECV_SFD_SCAN;
+                        SendAck = SENDACK_NONE;  // just in case we received SACK(PEND) in the meantime
+                    }
                     break;
             }
             return b;
         }
 
+        // helper function to handle the addition of a byte to the rxFIFO
+        private boolean fifoAdd(byte c) {
+            if (printer != null) {
+                printer.println("CC2420 Add to RXFIFO: " + StringUtil.toMultirepString(c, 8));
+            }
+            rxFIFO.add(c);
+            if (rxFIFO.overFlow()) {
+                // an RX overflow has occurred.
+                FIFO_pin.level.setValue(!FIFO_active);
+                signalFIFOP();
+                state = RECV_OVERFLOW;
+                lastCRCok = false;
+                return false;
+            }
+            else {
+                FIFO_pin.level.setValue(FIFO_active);
+                if (rxFIFO.size() >= getFIFOThreshold()) {
+                    // TODO: when address recognition is on FIFOP will remain
+                    // low until the frame passed address recognition completely.
+                    // The current matchAddress() does not support this.
+                    signalFIFOP();
+                }
+            }
+            return true;
+        }
+        
         private boolean matchAddress(byte b, int counter) {
+            if (counter > 1 && (rxFIFO.peek(1) & 0x04) == 4 && RESERVED_FRAME_MODE.getValue()) {
+                // no further address decoding is done for reserved frames
+                return true;
+            }
             switch (counter) {
                 case 1://frame type subfield contents an illegal frame type?
                     if ((rxFIFO.peek(1) & 0x04) == 4 && !(RESERVED_FRAME_MODE.getValue()))
@@ -1189,7 +1322,7 @@ public class CC2420Radio implements Radio {
                     if (((rxFIFO.peek(2) >> 2) & 0x03) == 0) {//DestPANId and dest addresses are not present
                         if (((rxFIFO.peek(2) >> 6) & 0x02) != 0) {//SrcPANId present
                             if ((rxFIFO.peek(1) & 0x07) == 0) {//beacon frame: SrcPANid shall match macPANId unless macPANId = 0xffff
-                                if (!Arrays.equals(PANId, macPANId) && !Arrays.equals(PANId, SHORT_BROADCAST_ADDR))
+                                if (!Arrays.equals(PANId, macPANId) && !Arrays.equals(macPANId, SHORT_BROADCAST_ADDR) && !BCN_ACCEPT.getValue())
                                     return false;
                             } else
                             if (((rxFIFO.peek(1) & 0x07) == 1) || ((rxFIFO.peek(1) & 0x07) == 3)) {//data or mac command
@@ -1218,6 +1351,18 @@ public class CC2420Radio implements Radio {
             return true;
         }
 
+        private void dropFrame() {
+            // do not clear complete FIFO, only reject frame.
+            rxFIFO.dropLast();
+            // unset FIFO/FIFOP pins if necessary
+            if (rxFIFO.empty()) {
+                FIFO_pin.level.setValue(!FIFO_active);
+            }
+            if (rxFIFO.size() < getFIFOThreshold()) {
+                FIFOP_pin.level.setValue(!FIFOP_active);
+            }
+        }
+            
         private void signalFIFOP() {
             FIFOP_pin.level.setValue(FIFOP_active);
             if (FIFOP_interrupt > 0) {
@@ -1232,24 +1377,30 @@ public class CC2420Radio implements Radio {
             }
         }
 
+        protected boolean inPacket() {
+            return state == RECV_SFD_MATCHED_1
+                || state == RECV_SFD_MATCHED_2
+                || state == RECV_IN_PACKET
+                || state == RECV_CRC_1
+                || state == RECV_CRC_2;
+        }
+        
         void startup() {
-//            if (!RXstartingUp){
-//                RXstartingUp = true;
-//                sim.insertEvent(new Simulator.Event() {
-//                    public void fire() {
-                        stateMachine.transition(3);//change to receive state
-                        state = RECV_SFD_SCAN;
-                        beginReceive(getFrequency());
-//                        RXstartingUp = false;
-//                        if (printer!=null) printer.println("RX Started Up");
-//                    }
-//                }, toCycles(PLL_LOCK_TIME));
-//            }
+            stateMachine.transition(3);//change to receive state
+            state = RECV_SFD_SCAN;
+            clearBER();
+            beginReceive(getFrequency());
+            if (printer!=null) {
+                printer.println("CC2420 RX started");
+            }
         }
 
         void shutdown() {
-            stateMachine.transition(2);//change to idle state
+            // note that stateMachine.transition() is not called here any more
             endReceive();
+            if (printer != null) {
+                printer.println("CC2420 RX shutdown");
+            }
         }
 
         void resetOverflow() {
@@ -1302,7 +1453,8 @@ public class CC2420Radio implements Radio {
         public boolean read() {
             boolean val = level.getValue();
             if (printer != null) {
-                printer.println("CC2420 Read pin " + name + " -> " + val);
+//                printer.println("CC2420 Read pin " + name + " -> " + val);
+                printer.println("CC2420 Read pin " + name + " -> " + val + " at " + ((avrora.sim.AtmelInterpreter)sim.getInterpreter()).getState().getPC());
             }
             return val;
         }

@@ -39,6 +39,7 @@ import avrora.sim.Simulator;
 import avrora.sim.mcu.AtmelMicrocontroller;
 import avrora.sim.mcu.USART;
 import avrora.sim.platform.SerialForwarder;
+import avrora.sim.platform.SerialLogger;
 import cck.util.*;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -68,8 +69,13 @@ public class SerialMonitor extends MonitorFactory {
     protected final Option.Str COMMAND = newOption("command", "",
             "The \"command\" option defines an external command to connect to the serial " +
             "port of the simulated system.");
+    protected final Option.List TERMINAL = newOptionList("terminal", "",
+            "The \"terminal\" option prints packets that are to sent over the UART to the terminal. " +
+            "The format is to first give the node number and then the UART number " +
+            "($node:$uart,$node:$uart).");
 
     HashMap portMap;
+    private Simulator simulator;
 
     abstract class Connection {
         int usart;
@@ -98,6 +104,12 @@ public class SerialMonitor extends MonitorFactory {
         }
     }
 
+    class TerminalConnection extends Connection {
+        void connect(USART usart) {
+            new SerialLogger(usart, simulator);
+        }
+    }
+    
     /**
      * The <code>SerialMonitor</code> class is a monitor that connects the USART of a node to a socket that allows data
      * to be read and written from the simulation.
@@ -110,6 +122,7 @@ public class SerialMonitor extends MonitorFactory {
          * @param s Simulator
          */
         Monitor(Simulator s) {
+            simulator = s;
             Set conns = (Set)portMap.get(new Integer(s.getID()));
             if ( conns != null ) {
                 Iterator i = conns.iterator();
@@ -145,6 +158,7 @@ public class SerialMonitor extends MonitorFactory {
         super.processOptions(o);
         processSocketConnections();
         processDeviceConnections();
+        processTerminalConnections();
     }
 
     private void processSocketConnections() {
@@ -177,6 +191,20 @@ public class SerialMonitor extends MonitorFactory {
             conn.usart = uart;
             conn.infile = inf;
             conn.outfile = outf;
+            addConnection(nid, conn);
+        }
+    }
+
+    private void processTerminalConnections() {
+        Iterator i = TERMINAL.get().iterator();
+        while ( i.hasNext() ) {
+            String pid = (String)i.next();
+            String[] str = pid.split(":");
+            if ( str.length < 2 ) Util.userError("Format error in \"terminal\" option");
+            int nid = Integer.parseInt(str[0]);
+            int uart = Integer.parseInt(str[1]);
+            TerminalConnection conn = new TerminalConnection();
+            conn.usart = uart;
             addConnection(nid, conn);
         }
     }

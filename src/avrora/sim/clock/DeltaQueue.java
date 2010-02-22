@@ -333,8 +333,10 @@ public class DeltaQueue {
         l.next = freeLinks;
         freeLinks = l;
 
-        freeEventLists = l.events;
-        l.events = null;
+        if (l.events != null) {
+            free(l.events);
+            l.events = null;
+        }
     }
 
     private void free(EventList l) {

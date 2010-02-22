@@ -6,6 +6,8 @@
  */
 package avrora.sim.radio;
 
+import avrora.sim.radio.Topology;
+
 import java.util.*;
 
 /**
@@ -20,18 +22,6 @@ public class RadiusModel implements Medium.Arbitrator {
     protected final double maximumDistance;
     protected final double maximumDistanceSq;
     protected final Map positions;
-
-    public static final class Position {
-        public final double x;
-        public final double y;
-        public final double z;
-
-        public Position(double x, double y, double z) {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-        }
-    }
 
     public RadiusModel(double minDist, double maxDist) {
         maximumDistance = maxDist;
@@ -77,21 +67,15 @@ public class RadiusModel implements Medium.Arbitrator {
         return (char)value;
     }
 
-    public void setPosition(Radio radio, double x, double y, double z) {
-        Position pos = new Position(x, y, z);
-        positions.put(radio.getTransmitter(), pos);
-        positions.put(radio.getReceiver(), pos);
-    }
-
-    public void setPosition(Radio radio, Position pos) {
+    public void setPosition(Radio radio, Topology.Position pos) {
         positions.put(radio.getTransmitter(), pos);
         positions.put(radio.getReceiver(), pos);
     }
 
     protected double distanceSq(Medium.Transmitter t, Medium.Receiver r) {
         double distSq = 0;
-        Position a = (Position)positions.get(t);
-        Position b = (Position)positions.get(r);
+        Topology.Position a = (Topology.Position)positions.get(t);
+        Topology.Position b = (Topology.Position)positions.get(r);
         if ( a != null && b != null) {
             double dx = a.x - b.x;
             double dy = a.y - b.y;
