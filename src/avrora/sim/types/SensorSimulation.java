@@ -252,6 +252,7 @@ public class SensorSimulation extends Simulation {
                     updateVariable(smap, "node_address", id);               // SOS
                     updateVariable(smap, "TOS_NODE_ID", id);                // Tinyos 2.0
                     updateVariable(smap, "ActiveMessageAddressC$addr", id); // Tinyos 2.0
+                    updateVariable(smap, "ActiveMessageAddressC__addr", id); // Tinyos 2.1.1 with nesC 1.3.1
                 }
             }
         }
