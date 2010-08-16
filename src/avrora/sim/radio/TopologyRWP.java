@@ -59,6 +59,7 @@ public class TopologyRWP extends TopologyStatic {
     public final Option.Double MOBILITY_MAXY = newOption("mobility-maxY", Double.MIN_VALUE, "Maximum Y coordinate in m");
     public final Option.Double MOBILITY_MINZ = newOption("mobility-minZ", Double.MAX_VALUE, "Minimum Z coordinate in m");
     public final Option.Double MOBILITY_MAXZ = newOption("mobility-maxZ", Double.MIN_VALUE, "Maximum Z coordinate in m");
+    public final Option.Double MOBILITY_MINVEL = newOption("mobility-minvel", 0.0, "Minimum velocity in m/s");
     public final Option.Double MOBILITY_MAXVEL = newOption("mobility-maxvel", 2.777777, "Maximum velocity in m/s");
     public final Option.Double MOBILITY_MAXWAIT = newOption("mobility-maxwait", 0.0, "Maximum wait time between two movements in s");
     public final Option.Double MOBILITY_GRANULARITY = newOption("mobility-granularity", 0.5, "Granularity of the movement in m");
@@ -66,7 +67,7 @@ public class TopologyRWP extends TopologyStatic {
   
     private int[] mobileNodeIds;
   
-    private double minX, maxX, minY, maxY, minZ, maxZ, maxVelocity, maxWait, granularity;
+    private double minX, maxX, minY, maxY, minZ, maxZ, minVelocity, maxVelocity, maxWait, granularity;
 
     private static Random rand = Defaults.getSimulation("sensor-network").getRandom();
     
@@ -77,7 +78,7 @@ public class TopologyRWP extends TopologyStatic {
         super("Random waypoint mobility model. Starting topology can be given as for static topology. "
             +"When doing so, the min/max coordinates are automatically adjusted so that they at least cover all nodes. By default, "
             +"the ranges are negativ which will lead to an error when no start topology and no min/max settings are given. "
-            +"All nodes given by the mobile-nodes list will travel with speed between 0 and mobility-maxvel. "
+            +"All nodes given by the mobile-nodes list will travel with speed between mobility-minvel and mobility-maxvel. "
             +"After reaching the destination they will wait a random time between 0 and mobility-maxwait before they select a new destination."
             +"The positions of the nodes are update with the given granularity. Note that a finer granularity will result in higher computational "
             +"effort and, therefore, higher simulation time.");
@@ -119,7 +120,7 @@ public class TopologyRWP extends TopologyStatic {
             
             double velocity = 0.0;
             while (velocity == 0.0) {
-                velocity = rand.nextDouble()*maxVelocity;
+                velocity = minVelocity + rand.nextDouble()*maxVelocity;  // maxVel is actually the delta, see start()
             }
             eventCycles = clock.millisToCycles(1000*granularity/velocity);
             if (eventCycles == 0) {
@@ -207,10 +208,22 @@ public class TopologyRWP extends TopologyStatic {
         maxY= MOBILITY_MAXY.get();
         minZ = MOBILITY_MINZ.get();
         maxZ = MOBILITY_MAXZ.get();
+        minVelocity = MOBILITY_MINVEL.get();
         maxVelocity = MOBILITY_MAXVEL.get();
         maxWait = MOBILITY_MAXWAIT.get();
         granularity = MOBILITY_GRANULARITY.get();
         
+        if (minVelocity < 0) {
+            Util.userError("Minimum velocity must be >= 0!");
+        }
+        if (maxVelocity <= 0) {
+            Util.userError("Maximum velocity must be > 0!");
+        }
+        if (maxVelocity < minVelocity) {
+            Util.userError("Maximum velocity must be >= minimum velocity!");
+        }
+        maxVelocity -= minVelocity;  // calculate delta to ease later calculations
+          
         if (!TOPOLOGY_FILE.isBlank()) {
             parseFile();
             // adjust the minimum and maximum coordinates
