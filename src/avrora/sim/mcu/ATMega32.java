@@ -87,6 +87,10 @@ public class ATMega32 extends ATMegaFamily {
 
     private static final int[][] transitionTimeMatrix  = FiniteStateMachine.buildBimodalTTM(idleModeNames.length, 0, wakeupTimes, new int[wakeupTimes.length]);
 
+    // CS values 6 and 7 select external clock source and are not supported. Results in an ArrayOutOfBound exception
+    public static final int[] ATmega32Periods0 = {0, 1, 8, 64, 256, 1024};
+    public static final int[] ATmega32Periods2 = {0, 1, 8, 32, 64, 128, 256, 1024};
+
 
     /**
      * The <code>props</code> field stores a static reference to a properties
@@ -326,4 +330,41 @@ public class ATMega32 extends ATMegaFamily {
             return MODE_IDLE;
     }
 
+    /**
+     * <code>Timer0</code> is different from ATMega128
+     */
+    protected class Timer0 extends Timer8Bit {
+        protected Timer0() {
+            super(ATMega32.this, 0, 1, 0, 1, 0, ATmega32Periods0);
+        }
+    }
+
+    /**
+     * <code>Timer2</code> is different from ATMega128
+     */
+    protected class Timer2 extends Timer8Bit {
+        protected Timer2() {
+            super(ATMega32.this, 2, 7, 6, 7, 6, ATmega32Periods2);
+            installIOReg("ASSR", new ASSRRegister());
+        }
+        
+        // See pg. 135 of the ATmega32A doc
+        protected class ASSRRegister extends RWRegister {
+            static final int AS2 = 3;
+            static final int TCN2UB = 2;
+            static final int OCR2UB = 1;
+            static final int TCR2UB = 0;
+
+            public void write(byte val) {
+                super.write((byte) (0xf & val));
+                decode(val);
+            }
+
+            protected void decode(byte val) {
+                // TODO: if there is a change, remove ticker and requeue?
+                timerClock = Arithmetic.getBit(val, AS2) ? externalClock : mainClock;
+            }
+        }
+    }
+    
 }

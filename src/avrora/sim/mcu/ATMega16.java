@@ -91,6 +91,10 @@ public class ATMega16 extends ATMegaFamily {
 
     private static final int[][] transitionTimeMatrix  = FiniteStateMachine.buildBimodalTTM(idleModeNames.length, 0, wakeupTimes, new int[wakeupTimes.length]);
 
+    // CS values 6 and 7 select external clock source and are not supported. Results in an ArrayOutOfBound exception
+    public static final int[] ATmega16Periods0 = {0, 1, 8, 64, 256, 1024};
+    public static final int[] ATmega16Periods2 = {0, 1, 8, 32, 64, 128, 256, 1024};
+
 
     /**
      * The <code>props</code> field stores a static reference to a properties
@@ -228,7 +232,7 @@ public class ATMega16 extends ATMegaFamily {
         addInterrupt(interruptAssignments, "TIMER1 OVF", 9);
         addInterrupt(interruptAssignments, "TIMER0 COMP", 20);
         addInterrupt(interruptAssignments, "TIMER0 OVF", 10);
-        addInterrupt(interruptAssignments, "SPI, ST", 11);
+        addInterrupt(interruptAssignments, "SPI, STC", 11);
         addInterrupt(interruptAssignments, "USART, RX", 12);
         addInterrupt(interruptAssignments, "USART, UDRE", 13);
         addInterrupt(interruptAssignments, "USART, TX", 14);
@@ -291,11 +295,14 @@ public class ATMega16 extends ATMegaFamily {
         installIOReg("GIFR", fr);
         EIFR_reg = fr;
 
-        // set up the timer mask and flag registers and interrupt range
-        TIFR_reg = buildInterruptRange(false, "TIMSK", "TIFR", 12, 8);
-        TIMSK_reg = (MaskRegister)getIOReg("TIMSK");
+        // set up the timer mask and flag registers
+        int[] mappingTIMSK = new int[] { 10, 20, 9, 8, 7, 6, 5, 4 };
+        TIFR_reg = new FlagRegister(interpreter, mappingTIMSK);
+        TIMSK_reg = new MaskRegister(interpreter, mappingTIMSK);
+        installIOReg("TIFR", TIFR_reg);
+        installIOReg("TIMSK", TIMSK_reg);
 
-
+        
         addDevice(new Timer0());
         addDevice(new Timer1(2));
         addDevice(new Timer2());
@@ -324,6 +331,43 @@ public class ATMega16 extends ATMegaFamily {
             return Arithmetic.getBitField(value, MCUCR_sm_perm) + 1;
         else
             return MODE_IDLE;
+    }
+
+    /**
+     * <code>Timer0</code> is different from ATMega128
+     */
+    protected class Timer0 extends Timer8Bit {
+        protected Timer0() {
+            super(ATMega16.this, 0, 1, 0, 1, 0, ATmega16Periods0);
+        }
+    }
+
+    /**
+     * <code>Timer2</code> is different from ATMega128
+     */
+    protected class Timer2 extends Timer8Bit {
+        protected Timer2() {
+            super(ATMega16.this, 2, 7, 6, 7, 6, ATmega16Periods2);
+            installIOReg("ASSR", new ASSRRegister());
+        }
+        
+        // See pg. 133 of the ATmega16A doc
+        protected class ASSRRegister extends RWRegister {
+            static final int AS2 = 3;
+            static final int TCN2UB = 2;
+            static final int OCR2UB = 1;
+            static final int TCR2UB = 0;
+
+            public void write(byte val) {
+                super.write((byte) (0xf & val));
+                decode(val);
+            }
+
+            protected void decode(byte val) {
+                // TODO: if there is a change, remove ticker and requeue?
+                timerClock = Arithmetic.getBit(val, AS2) ? externalClock : mainClock;
+            }
+        }
     }
 
 }

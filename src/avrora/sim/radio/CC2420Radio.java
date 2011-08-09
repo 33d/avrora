@@ -1453,8 +1453,7 @@ public class CC2420Radio implements Radio {
         public boolean read() {
             boolean val = level.getValue();
             if (printer != null) {
-//                printer.println("CC2420 Read pin " + name + " -> " + val);
-                printer.println("CC2420 Read pin " + name + " -> " + val + " at " + ((avrora.sim.AtmelInterpreter)sim.getInterpreter()).getState().getPC());
+                printer.println("CC2420 Read pin " + name + " -> " + val);
             }
             return val;
         }

@@ -938,8 +938,15 @@ public class CC1000Radio implements Radio {
             public void write(boolean level) {
                 if ( level == last ) return;
                 if (!level) {
+                    if (bitsRead != 0 && readerPrinter != null) {
+                        readerPrinter.println("Unexpected falling edge on CC1000.PALE when bitsRead is " + bitsRead);
+                    }
                     bitsRead = 0;
+                    address = 0;
                 } else {
+                    if (bitsRead != 8 && readerPrinter != null) {
+                        readerPrinter.println("Unexpected rising edge on CC1000.PALE when bitsRead is " + bitsRead);
+                    }
                     bitsRead = 8;
                 }
                 last = level;

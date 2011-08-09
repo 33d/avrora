@@ -112,22 +112,23 @@ public class SerialLogger implements USART.USARTDevice {
             }
             else {
               int readCrc = (receiveBuffer[count - 2]  & 0xff) |
-		  (receiveBuffer[count - 1] & 0xff) << 8;
+                  (receiveBuffer[count - 1] & 0xff) << 8;
               int computedCrc = calc(receiveBuffer, count-2);
 
+              // create output
+              StringBuffer pbuf;
               if (readCrc == computedCrc) {
-                // create output
-                StringBuffer pbuf = new StringBuffer("UART: received ");
-                for (int i=0; i < count - 2; i++) {
-                  StringUtil.toHex(pbuf, receiveBuffer[i], 2);
-                  pbuf.append(":");
-                }
-                buf = pbuf.toString();
+                pbuf = new StringBuffer("UART: received ");
               }
               else {
-                buf = new String("UART: bad packet");
+                pbuf = new StringBuffer("UART: bad packet ");
               }
-	      count = 0;
+              for (int i=0; i < count - 2; i++) {
+                StringUtil.toHex(pbuf, receiveBuffer[i], 2);
+                pbuf.append(":");
+              }
+              buf = pbuf.toString();
+              count = 0;
             }
           }
           else { // normal byte
@@ -150,28 +151,28 @@ public class SerialLogger implements USART.USARTDevice {
       crc = crc ^ (int)b << 8;
 
       for (int i = 0; i < 8; i++) {
-	if ((crc & 0x8000) == 0x8000)
-	  crc = crc << 1 ^ 0x1021;
-	else
-	  crc = crc << 1;
+        if ((crc & 0x8000) == 0x8000)
+          crc = crc << 1 ^ 0x1021;
+        else
+          crc = crc << 1;
       }
 
       return crc & 0xffff;
     }
 
     public static int calc(byte[] packet, int index, int count) {
-	int crc = 0;
-	int i;
+        int crc = 0;
+        int i;
 
-	while (count > 0) {
-	    crc = calcByte(crc, packet[index++]);
-	    count--;
-	}
-	return crc;
+        while (count > 0) {
+            crc = calcByte(crc, packet[index++]);
+            count--;
+        }
+        return crc;
     }
 
     public static int calc(byte[] packet, int count) {
-	return calc(packet, 0, count);
+        return calc(packet, 0, count);
     }
 
 }
