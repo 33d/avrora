@@ -913,7 +913,11 @@ public class CC1000Radio implements Radio {
             public void write(boolean level) {
                 // only trigger on level changes
                 if (level != last) {
-                    if (!level) clockInBit(); // perform action on falling edge.
+                    // for address or write command on falling edge
+                    // when the address is over and we have a read command on rising edge
+                    if (((!PALE_in.last || writeCommand) && !level)
+                    || (PALE_in.last && !writeCommand && level))
+                        clockInBit();
                     last = level;
                 }
             }
@@ -943,11 +947,15 @@ public class CC1000Radio implements Radio {
                     }
                     bitsRead = 0;
                     address = 0;
+                    writeCommand = false;
                 } else {
                     if (bitsRead != 8 && readerPrinter != null) {
                         readerPrinter.println("Unexpected rising edge on CC1000.PALE when bitsRead is " + bitsRead);
                     }
                     bitsRead = 8;
+                    // set the first output bit on a read command (see CC1000 data sheet Fig. 5 page 14)
+                    if (!writeCommand)
+                        outputReadBit();
                 }
                 last = level;
             }
@@ -963,7 +971,7 @@ public class CC1000Radio implements Radio {
                 writeCommand = inputPin;
                 if (!writeCommand) {
                     readData = registers[address].value;
-                    outputReadBit();
+                    // the first bit is set on PDATA when PALE goes high
                 }
             } else if ( bitsRead < 16 ) {
                 // the 9-16th bits are either the value to write or the value of the register
