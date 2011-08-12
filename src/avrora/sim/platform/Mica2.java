@@ -40,6 +40,7 @@ import avrora.sim.mcu.*;
 import avrora.sim.platform.sensors.LightSensor;
 import avrora.sim.platform.sensors.SensorBoard;
 import avrora.sim.platform.sensors.AccelSensor;
+import avrora.sim.platform.sensors.AccelSensorPower;
 import avrora.sim.radio.CC1000Radio;
 import cck.text.Terminal;
 
@@ -119,12 +120,13 @@ public class Mica2 extends Platform {
         externalFlash = new ExternalFlash(mcu, 2048, 264);
         AtmelMicrocontroller amcu = (AtmelMicrocontroller)mcu;
         // acceleration sensors
-        accelXSensor = new AccelSensor(amcu, 3, "PC4");
+        AccelSensorPower asp = new AccelSensorPower(amcu, "PC4");
+        accelXSensor = new AccelSensor(amcu, 3, asp);
         addDevice("accelx-sensor", accelXSensor);
-        accelYSensor = new AccelSensor(amcu, 4, "PC4");
+        accelYSensor = new AccelSensor(amcu, 4, asp);
         addDevice("accely-sensor", accelYSensor);
         // light sensor
-        lightSensor = new LightSensor(amcu, 1, "PC2", "PE5");
+        lightSensor = new LightSensor(amcu, 1, "PE5");
         addDevice("light-sensor", lightSensor);
     }
 

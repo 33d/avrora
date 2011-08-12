@@ -47,16 +47,14 @@ public class LightSensor extends Sensor {
 
     protected final FiniteStateMachine fsm;
 
-    protected static final String[] names = { "power down", "off", "on" };
-    protected boolean power;
+    protected static final String[] names = { "power down", "on" };
     protected boolean on;
     public ADC adcDevice;
 
-    public LightSensor(AtmelMicrocontroller m, int adcChannel, String onPin, String powPin) {
+    public LightSensor(AtmelMicrocontroller m, int adcChannel, String onPin) {
         mcu = m;
         channel = adcChannel;
         mcu.getPin(onPin).connectOutput(new OnPin());
-        mcu.getPin(powPin).connectOutput(new PowerPin());
         fsm = new FiniteStateMachine(mcu.getClockDomain().getMainClock(), 0, names, 0);
         adcDevice = (ADC)mcu.getDevice("adc");
         adcDevice.connectADCInput(new ADCInput(), channel);
@@ -64,29 +62,20 @@ public class LightSensor extends Sensor {
 
     class OnPin implements Microcontroller.Pin.Output {
         public void write(boolean val) {
-            // TODO: is there an inverter?
-            on = !val;
-            fsm.transition(state());
-        }
-    }
-
-    class PowerPin implements Microcontroller.Pin.Output {
-        public void write(boolean val) {
-            power = val;
+            on = val;
             fsm.transition(state());
         }
     }
 
     private int state() {
-        if ( !power ) return 0;
-        if ( !on ) return 1;
-        else return 2;
+        if ( !on ) return 0;
+        else return 1;
     }
 
     class ADCInput implements ADC.ADCInput {
         public float getVoltage() {
             if ( data == null ) return ADC.GND_LEVEL;
-            if ( !power || !on ) return ADC.GND_LEVEL;
+            if ( !on ) return ADC.GND_LEVEL;
             int read = data.reading();
             // scale the reading back to a voltage.
             return adcDevice.getVoltageRef() * ((float)read) / 0x3ff;

@@ -32,34 +32,41 @@
 
 package avrora.sim.platform.sensors;
 
+import avrora.sim.FiniteStateMachine;
 import avrora.sim.mcu.*;
 
 /**
- * The <code>AccelSensor</code> class implements a accelerometer like that present on the Mica2 MTS300 sensorboard.
+ * The <code>AccelSensorPower</code> handles the Power pin for the acceleration sensor
  *
  * @author Ben L. Titzer
  * @author Zainul M. Charbiwala
  * @author Daniel Minder
  */
-public class AccelSensor extends Sensor {
+public class AccelSensorPower {
 
-    protected final AccelSensorPower asp;
-    protected ADC adcDevice;
-  
-    public AccelSensor(AtmelMicrocontroller m, int adcChannel, AccelSensorPower asp) {
-        adcDevice = (ADC)m.getDevice("adc");
-        adcDevice.connectADCInput(new ADCInput(), adcChannel);
-        this.asp = asp;
+    protected final FiniteStateMachine fsm;
+
+    protected static final String[] names = { "power down", "on" };
+    protected boolean on;
+
+    public AccelSensorPower(AtmelMicrocontroller m, String onPin) {
+        m.getPin(onPin).connectOutput(new OnPin());
+        fsm = new FiniteStateMachine(m.getClockDomain().getMainClock(), 0, names, 0);
     }
 
-    class ADCInput implements ADC.ADCInput {
-        public float getVoltage() {
-            if ( data == null ) return ADC.GND_LEVEL;
-            if ( !asp.isOn() ) return ADC.GND_LEVEL;
-            int read = data.reading();
-            // scale the reading back to a voltage.
-            return adcDevice.getVoltageRef() * ((float)read) / 0x3ff;
+    class OnPin implements Microcontroller.Pin.Output {
+        public void write(boolean val) {
+            on = val;
+            fsm.transition(state());
         }
     }
+
+    private int state() {
+        if ( !on ) return 0;
+        else return 1;
+    }
     
+    public boolean isOn() {
+      return on;
+    }
 }

@@ -39,6 +39,8 @@ import avrora.sim.clock.ClockDomain;
 import avrora.sim.mcu.*;
 import avrora.sim.platform.sensors.LightSensor;
 import avrora.sim.platform.sensors.SensorBoard;
+import avrora.sim.platform.sensors.AccelSensor;
+import avrora.sim.platform.sensors.AccelSensorPower;
 import avrora.sim.radio.*;
 import cck.text.Terminal;
 
@@ -77,6 +79,8 @@ public class MicaZ extends Platform {
     protected SensorBoard sensorboard;
     protected ExternalFlash externalFlash;
     protected LightSensor lightSensor;
+    protected AccelSensor accelXSensor;
+    protected AccelSensor accelYSensor;
     protected LED.LEDGroup ledGroup;
 
     private MicaZ(Microcontroller m) {
@@ -129,8 +133,14 @@ public class MicaZ extends Platform {
         sensorboard = new SensorBoard(sim);
         // external flash
         externalFlash = new ExternalFlash(mcu, 2048, 264);
+        // acceleration sensors
+        AccelSensorPower asp = new AccelSensorPower(amcu, "PC4");
+        accelXSensor = new AccelSensor(amcu, 3, asp);
+        addDevice("accelx-sensor", accelXSensor);
+        accelYSensor = new AccelSensor(amcu, 4, asp);
+        addDevice("accely-sensor", accelYSensor);
         // light sensor
-        lightSensor = new LightSensor(amcu, 1, "PC2", "PE5");
+        lightSensor = new LightSensor(amcu, 1, "PE5");
         addDevice("light-sensor", lightSensor);
     }
 
