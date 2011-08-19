@@ -292,10 +292,6 @@ public class Medium {
 
         public abstract byte nextByte(boolean lock, byte b);
 
-        public abstract void setRssiValid(boolean v);
-
-        public abstract boolean getRssiValid();
-
         public abstract void setRSSI(double rssi);
 
         public abstract void setBER(double BER);
@@ -435,42 +431,50 @@ public class Medium {
          * @return true if channel is clear and false otherwise
          */
         public final boolean isChannelClear(int RSSI_reg, int MDMCTRL0_reg) {
-            //There are 3 modes (ED, 802.15.4 compliant detection, both)
-            int cca_mode = (MDMCTRL0_reg & 0x00c0) >>> 6;
-            if (!activated) {//not receiving, CCA true depending on cca_mode
+            if (activated && locked) {
+                // this is the only shortcut: receiver is on and locked to a transmission
+                return false;
+            }
+            else {
+                // the receiver could be off or it is not locked to a transmission
+                // the latter could happen also if the receiver was just turned on and the TX has been started before!
                 long time = clock.getCount();
                 long bit = getBitNum(time) - BIT_DELAY; // there is a one bit delay
                 waitForNeighbors(time - cyclesPerByte);
                 List it = getIntersection(bit - BYTE_SIZE);
-                if (it != null) {//if there is a transmission compute rssi
-                    boolean one = false;
-                    double rssi = 0.0;
-                    assert it.size() > 0;
-                    Iterator i = it.iterator();
-                    while (i.hasNext()) {
-                        Transmission t = (Transmission) i.next();
-                        if (one) {//more than one transmission
-                            double I = medium.arbitrator.computeReceivedPower(t, Receiver.this, (int) clock.cyclesToMillis(clock.getCount()));
-                            //add interference to received power in linear scale
-                            rssi = 10 * Math.log10(Math.pow(10, rssi / 10) + Math.pow(10, I / 10));
-                        } else {//only one transmission - no interference -
-                            one = true;
-                            Pr = medium.arbitrator.computeReceivedPower(t, Receiver.this, (int) clock.cyclesToMillis(clock.getCount()));
-                            Pn = medium.arbitrator.getNoise((int) clock.cyclesToMillis(clock.getCount()));
-                            rssi = Pr;
-                        }
-                    }
+                if (it != null) { //if there is a transmission
+                    //There are 3 modes (ED, 802.15.4 compliant detection, both)
+                    int cca_mode = (MDMCTRL0_reg & 0x00c0) >>> 6;
                     //cca modes 1 and 3 compare threshold with rssi to determine CCA
-                    if (cca_mode == 1 | cca_mode == 3) {
+                    if (cca_mode == 1 || cca_mode == 3) {
+                        boolean one = false;
+                        double rssi = 0.0;
+                        assert it.size() > 0;
+                        Iterator i = it.iterator();
+                        while (i.hasNext()) {
+                            Transmission t = (Transmission) i.next();
+                            if (one) {//more than one transmission
+                                double I = medium.arbitrator.computeReceivedPower(t, Receiver.this, (int) clock.cyclesToMillis(clock.getCount()));
+                                //add interference to received power in linear scale
+                                rssi = 10 * Math.log10(Math.pow(10, rssi / 10) + Math.pow(10, I / 10));
+                            } else {//only one transmission - no interference -
+                                one = true;
+                                Pr = medium.arbitrator.computeReceivedPower(t, Receiver.this, (int) clock.cyclesToMillis(clock.getCount()));
+                                Pn = medium.arbitrator.getNoise((int) clock.cyclesToMillis(clock.getCount()));
+                                rssi = Pr;
+                            }
+                        }
                         int cca_hyst = (MDMCTRL0_reg & 0x0700) >>> 8;
-                        int cca_thr = ((RSSI_reg & 0xff00) >>> 8) - 256;
+                        int cca_thr = (RSSI_reg & 0xff00) >>> 8;
+                        if (cca_thr > 127)
+                          cca_thr -= 256;
                         int rssi_val = (int) rssi + 45;
                         return rssi_val < cca_thr - cca_hyst;
-                    }//other modes true if no transmissions
-                    else return it != null;
-                } else return it != null;//no transmissions CCA true
-                //receiving
-            } else return !locked;//true if it is not locked onto a tx
+                    }
+                    else return false;  //other modes false since we have transmissions
+                }
+                else return true;  //no transmissions: CCA true in all cases
+            }
         }
 
         /**

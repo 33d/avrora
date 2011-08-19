@@ -518,6 +518,9 @@ public class CC2420Radio implements Radio {
             case MDMCTRL0:
                 val = 0x0ae2;
                 break;
+            case RSSI:
+                val = 0xe080;
+                break;
             case SYNCWORD:
                 val = 0xa70f;
                 break;
@@ -743,7 +746,11 @@ public class CC2420Radio implements Radio {
         }
 
         public boolean getValue() {
-            return receiver.isChannelClear(readRegister(RSSI),readRegister(MDMCTRL0));
+            if (!receiver.getRssiValid())
+                // CC2420 sets the pin inactive when RSSI is invalid!
+                return false;
+            else
+                return receiver.isChannelClear(readRegister(RSSI),readRegister(MDMCTRL0));
         }
     }
 
@@ -1024,31 +1031,20 @@ public class CC2420Radio implements Radio {
             super(m, sim.getClock());
         }
 
-        public void setRssiValid (boolean v){
+        private void setRssiValid (boolean v){
             rssiValid.setValue(v);
-            if (v){//RSSI valid (rssi initialized to KTB - Rssi_offset=-91-45=-136)
-                int cca_thr = (readRegister(RSSI) & 0xff00);
-                if (cca_thr == 0) cca_thr = -32;
-                int rssi_val = cca_thr;
-                rssi_val = rssi_val << 8;
-                int rssi =(0x00ff&-95);
-                rssi_val = rssi | rssi_val;
-                writeRegister(RSSI,rssi_val);
-            }else{//RSSI no valid (rssi_val = -128)
-                if (getRssiValid()){
-                    int cca_thr = (readRegister(RSSI) & 0xff00);
-                    if (cca_thr == 0) cca_thr = -32;
-                    int rssi_val = cca_thr;
-                    rssi_val = rssi_val << 8;
-                    int rssi =(0x00ff&-128);
-                    rssi_val = rssi | rssi_val;
-                    writeRegister(RSSI,rssi_val);
-                }
-            }
+            //RSSI valid: rssi initialized to KTB - Rssi_offset=-91-45=-136
+            //RSSI not valid: rssi_val = -128
+            int rssi_val = v ? -91 : -128;
+            int cca_thr = (readRegister(RSSI) & 0xff00);
+            rssi_val = cca_thr | (rssi_val & 0x00ff);
+            writeRegister(RSSI,rssi_val);
         }
-        public boolean getRssiValid (){
+        
+        private boolean getRssiValid (){
             return rssiValid.getValue();
         }
+        
         public double getCorrelation (){
             int PERindex = (int)(getPER()*100);
             Random random = new Random();
@@ -1063,6 +1059,8 @@ public class CC2420Radio implements Radio {
         public void setRSSI (double Prec){
             //compute Rssi as Pr + RssiOffset
             int rssi_val =(int)Math.rint(Prec + 45.0D);
+            // -127 <= rssi_val <= 127 since -128 is "invalid RSSI"
+            rssi_val = Math.min(127,Math.max(-127,rssi_val));
             rssi_val = rssi_val & 0x00ff;
             int cca_thr = (readRegister(RSSI) & 0xff00);
             rssi_val = rssi_val | cca_thr;
@@ -1384,12 +1382,26 @@ public class CC2420Radio implements Radio {
                 || state == RECV_CRC_1
                 || state == RECV_CRC_2;
         }
+
+        /**
+         * The <code>RssiValid</code> class implements a Simulator Event
+         * that is fired when the RSSI becomes valid after 8 symbols
+         */
+        protected class RssiValid implements Simulator.Event {
+            public void fire() {
+                if (activated) {
+                    setRssiValid(true);
+                }
+            }
+        }
+        protected RssiValid rssiValidEvent = new RssiValid();
         
         void startup() {
             stateMachine.transition(3);//change to receive state
             state = RECV_SFD_SCAN;
             clearBER();
             beginReceive(getFrequency());
+            clock.insertEvent(rssiValidEvent, 4*cyclesPerByte);  // 8 symbols = 4 bytes
             if (printer!=null) {
                 printer.println("CC2420 RX started");
             }
@@ -1398,6 +1410,7 @@ public class CC2420Radio implements Radio {
         void shutdown() {
             // note that stateMachine.transition() is not called here any more
             endReceive();
+            setRssiValid(false);
             if (printer != null) {
                 printer.println("CC2420 RX shutdown");
             }

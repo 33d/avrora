@@ -45,7 +45,7 @@ import cck.util.Arithmetic;
 /**
  * The <code>CC1000Radio</code> class is a simulation of the CC1000 radio for use with avrora. The CC1000
  * radio is used with the Mica2 platform in the real world. Verbose printers for this class include
- * "sim.cc1000", "sim.cc1000.data", "sim.cc1000.pinconfig".
+ * "radio.cc1000", "radio.cc1000.pinconfig".
  *
  * @author Ben L. Titzer
  * @author Daniel Lee
@@ -948,6 +948,7 @@ public class CC1000Radio implements Radio {
                     bitsRead = 0;
                     address = 0;
                     writeCommand = false;
+                    writeValue = 0;
                 } else {
                     if (bitsRead != 8 && readerPrinter != null) {
                         readerPrinter.println("Unexpected rising edge on CC1000.PALE when bitsRead is " + bitsRead);
@@ -1078,13 +1079,6 @@ public class CC1000Radio implements Radio {
             super(m, sim.getClock());
         }
         //cc2420 functions that have to be written by radio
-         public void setRssiValid (boolean v){
-             //do nothing
-         }
-          public boolean getRssiValid (){
-              //do nothing
-              return false;
-         }
           public void setRSSI (double PRec){
               //do nothing
           }
