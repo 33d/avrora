@@ -51,7 +51,7 @@ import java.util.HashSet;
 public class ODPPAction extends Action {
 
     protected final Option.Str FILE = newOption("file", "", "The \"file\" option, when set, indicates the file to which to output the " + "preprocessed objdump output.");
-    protected final Option.List SECTIONS = newOptionList("sections", ".text,.data", "This option specifies a list of sections that the loader should load from " + "the output.");
+    protected final Option.List SECTIONS = newOptionList("sections", ".text,.data,.bss", "This option specifies a list of sections that the loader should load from " + "the output.");
 
     private static final String HELP = "The \"odpp\" action tests the functionality of the objdump preprocessor that " + "cleans up the output of objdump into something more suitable for automated parsing.";
 

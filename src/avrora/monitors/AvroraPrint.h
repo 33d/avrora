@@ -59,10 +59,14 @@
  * @author AWS / Rodolfo De Paz http://www.aws.cit.ie/rodolfo
  * @contact avrora@lists.ucla.edu
  */
+
+#ifndef _AVRORAPRINT_H_
+#define _AVRORAPRINT_H_
+
 #define DEBUGBUF_SIZE 64
 #include <stdarg.h>
-char debugbuf1[DEBUGBUF_SIZE+1];
-char *debugbuf;
+volatile char debugbuf1[DEBUGBUF_SIZE+1];
+volatile char *debugbuf;
 
 #define printChar(__char) {	\
 	init();	\
@@ -123,3 +127,4 @@ void vartype(uint8_t a)
 	debugbuf1[0] = a;
 }
 
+#endif

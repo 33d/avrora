@@ -141,7 +141,7 @@ public class PacketMonitor extends MonitorFactory {
         public void fireBeforeTransmitEnd(Medium.Transmitter t) {
             packetsTransmitted++;
             if (showPackets) {
-                printer.printBuffer(renderPacket("----> "));
+                printer.printBuffer(renderPacket("----> ", 0, 0, bufferPos));
             }
             clear();
         }
@@ -158,74 +158,84 @@ public class PacketMonitor extends MonitorFactory {
                 return;
             }
             if (cc2420radio) {
-                if (bufferPos >= 5) {  // smaller packets might be artefacts due to the CC2420 implementation
-                    // look for the beginning of the packet since the transmission might start before
-                    for (int cnt = 4; cnt < bufferPos; cnt++) {
-                        if (((int)bufferData[cnt-1] & 0xff) == 0x0F && ((int)bufferData[cnt] & 0xff) == 0xA7) {
-                            // found a new packet. align it in buffer to normal position, but only if it's not already there
-                            if (cnt > 4) {
-                                bufferPos = bufferPos - cnt +4;  // new length
-                                System.arraycopy(bufferData, cnt-4, bufferData, 0, bufferPos);
+                    boolean foundAtLeastOne = false;
+                    int packetStart = 0;
+                    // we could still find a new packet here (2 bytes syncword, 1 byte length, 1 byte payload)
+                    while (packetStart + 4 <= bufferPos) {
+                        boolean found = false;
+                        // look for the beginning of the packet since the transmission might start before
+                        // Note: we assume that the syncword is 0FA7 since it's implemented like this in CC2420Radio although it's not correct!
+                        int syncwordStart;
+                        int addPreamble = 0;
+                        for (syncwordStart = packetStart; syncwordStart <= bufferPos - 4; syncwordStart++) {
+                            if (((int)bufferData[syncwordStart] & 0xff) == 0x0F && ((int)bufferData[syncwordStart+1] & 0xff) == 0xA7) {
+                                // found a new packet, determine alignment
+                                if (syncwordStart < packetStart + 3) {
+                                    // preamble in packet is less than 3, calculate additional preamble bytes for output
+                                    addPreamble = 3- (syncwordStart - packetStart);
+                                }
+                                else {
+                                    // enough bytes for preamble, calculate correct start of packet
+                                    packetStart = syncwordStart - 3;
+                                }
+                                found = true;
+                                break;
                             }
                         }
-                    }
-                    
-                    //If bytes were lost in the middle of the packet do not show them
-                    boolean lostBytesinPacket = false;
-                    for (int cnt = 0; cnt < bufferPos; cnt++) {
-                        int c = (int)bufferData[cnt] & 0xff;  // consider only the low byte without the corruption information
-                        switch (cnt) {
-                            case 0:
-                            case 1:
-                            case 2:
-                                if (c != 0x00) lostBytesinPacket = true;  // actually, the receiver will recognize the packet anyway!
-                                break;
-                            case 3:
-                                if (c != 0x0F) lostBytesinPacket = true;
-                                break;
-                            case 4:
-                                if (c != 0xA7) lostBytesinPacket = true;
-                                break;
-                            case 5:
-                                if (c != bufferPos - 6) lostBytesinPacket = true;
-                                break;
-                            default:
-                                break;
+
+                        // check end
+                        if (found) {
+                            int packetLength = (int)bufferData[syncwordStart+2] & 0xff;
+                            int packetEnd = syncwordStart + 3 + packetLength;
+                            if (packetLength > 0  && packetEnd <= bufferPos) {
+                                // packets with 0 length are ignored. packet must fit in buffer completely
+                                packetsReceived++;
+                                foundAtLeastOne = true;
+                                if ( showPackets) {
+                                    printer.printBuffer(renderPacket("<==== ", addPreamble, packetStart, packetEnd));
+                                }
+                            }
+                            // set the new packetStart for the next iteration
+                            packetStart = packetEnd;
+                        }
+                        else {
+                            packetStart = bufferPos;  // no further iteration
                         }
                     }
                     
-                    if (!lostBytesinPacket) {
-                        packetsReceived++;
-                        if ( showPackets) {
-                            printer.printBuffer(renderPacket("<==== "));
-                        }
-                    } else {
+                    if (bufferPos >= 5 && !foundAtLeastOne) {  // smaller packets are artefacts and are not counted as lost
                         packetsLostinMiddle++;
                     }
-                }
 
             } else {
                 packetsReceived++;
                 if ( showPackets ) {
-                    printer.printBuffer(renderPacket("<==== "));
+                    printer.printBuffer(renderPacket("<==== ", 0, 0, bufferPos));
                 }
             }
             clear();
         }
 
-        private StringBuffer renderPacket(String prefix) {
-            StringBuffer buf = printer.getBuffer(3 * bufferPos + 15);
+        private StringBuffer renderPacket(String prefix, int addPreamble, int start, int end) {
+            int packetLen = end - start;
+            StringBuffer buf = printer.getBuffer(3 * (addPreamble + packetLen) + 15);
             Terminal.append(Terminal.COLOR_BRIGHT_CYAN, buf, prefix);
+            // additional preamble bytes
+            for (int cntr = 0; cntr < addPreamble; cntr++) {
+                renderByte(cntr, '\0', true, buf);
+                buf.append('.');
+            }
+            // real packet
             boolean inPreamble = true;
-            for (int cntr = 0; cntr < bufferPos; cntr++) {
-                char t = bufferData[cntr];
-                inPreamble = renderByte(cntr, t, inPreamble, buf);
-                if (cntr < bufferPos - 1) buf.append('.');
+            for (int cntr = 0; cntr < packetLen; cntr++) {
+                char t = bufferData[start + cntr];
+                inPreamble = renderByte(cntr + addPreamble, t, inPreamble, buf);
+                if (cntr < packetLen - 1) buf.append('.');
             }
             appendTime(buf);
             return buf;
         }
-
+        
         private void appendTime(StringBuffer buf) {
             long cycles = simulator.getClock().getCount() - startCycle;
             double ms = simulator.getClock().cyclesToMillis(cycles);

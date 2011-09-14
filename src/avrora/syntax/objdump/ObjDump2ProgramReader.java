@@ -78,7 +78,10 @@ public class ObjDump2ProgramReader extends ProgramReader {
     }
 
     public ObjDump2ProgramReader() {
-        super("The \"odpp\" input format reads programs that are the " + "output of the \"avr-objdump\" utility provided with avr-binutils " + "and that have been preprocessed with Avrora's preprocessor utility. ");
+        super("The \"odpp\" input format reads programs that are the " +
+              "output of the \"avr-objdump\" utility provided with avr-binutils " +
+              "and that have been preprocessed with Avrora's preprocessor utility.\n" +
+              "The use of this format is deprecated - use ELF instead!");
     }
 
 }

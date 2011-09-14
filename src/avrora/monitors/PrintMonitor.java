@@ -53,16 +53,16 @@ import java.util.Iterator;
 public class PrintMonitor extends MonitorFactory {
 
     protected final Option.Str VARIABLENAME = newOption("VariableName","debugbuf1" ,
-            "This option specifies the name of the variable to print");
+            "This option specifies the name of the variable to print. See general description!");
     protected final Option.Str MAX = newOption("max","30" ,
-            "This option specifies the length of the variable to print");
+            "This option specifies the maximum length of the variable to print.");
     protected final Option.Str LOG = newOption("printlogfile", "",
             "This option specifies whether the print monitor should log changes to each " +
             "node's energy state. If this option is specified, then each node's print " +
             "statements will be written to <option>.#, where '#' represents the " +
             "node ID.");
     protected final Option.Str BASEADDR = newOption("base", "",
-            "This option specifies the base direction of the SRAM to watch. ");
+            "This option specifies the base direction of the SRAM to watch.");
     
     public class Monitor implements avrora.monitors.Monitor {
         public final MemPrint memprofile;        
@@ -102,8 +102,8 @@ public class PrintMonitor extends MonitorFactory {
 
     public PrintMonitor() {
         super("The \"print\" monitor watches a dedicated range of SRAM for instructions " +
-                "to print a string or int to the screen.  Set the VariableName and avrora " +
-                "will look directly inside the map file the part of the SRAM to print");
+                "to print a string or int to the screen. Since it expects a special format of this " +
+                "memory location use together with AvroraPrint.h");
     }
 
     public avrora.monitors.Monitor newMonitor(Simulator s) {

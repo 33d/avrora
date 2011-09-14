@@ -48,7 +48,7 @@ import java.io.*;
  */
 public class ObjDumpProgramReader extends ProgramReader {
 
-    protected final Option.List SECTIONS = newOptionList("sections", ".text,.data", "This option specifies a list of sections that the loader should load from " + "the output.");
+    protected final Option.List SECTIONS = newOptionList("sections", ".text,.data,.bss", "This option specifies a list of sections that the loader should load from " + "the output.");
 
     /**
      * The <code>read()</code> method takes the command line arguments passed to main and interprets it as a
@@ -84,7 +84,13 @@ public class ObjDumpProgramReader extends ProgramReader {
     }
 
     public ObjDumpProgramReader() {
-        super("The \"objdump\" input format reads programs that are the " + "output of the \"avr-objdump\" utility provided with avr-binutils. " + "For example, an ELF file must first be disassembled with " + "\"avr-objdump -zhD\" to create a text file readable by this input " + "format. The \"-zhD\" options are very important: the output will " + "not be parseable otherwise.");
+        super("The \"objdump\" input format reads programs that are the " +
+              "output of the \"avr-objdump\" utility provided with avr-binutils. " +
+              "For example, an ELF file must first be disassembled with " +
+              "\"avr-objdump -zhD\" to create a text file readable by this input " +
+              "format. The \"-zhD\" options are very important: the output will " +
+              "not be parseable otherwise.\n" +
+              "The use of this format is deprecated - use ELF instead!");
     }
 
 }
