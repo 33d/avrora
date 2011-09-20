@@ -1333,7 +1333,7 @@ public class CC2420Radio implements Radio {
                     ShortAddr = rxFIFO.peekField(6, 8);
                     macShortAddr = ByteFIFO.copyOfRange(RAMSecurityRegisters, 106, 108);
                     if (((rxFIFO.peek(2) >> 2) & 0x03) == 2) {
-                        if (!Arrays.equals(ShortAddr, ShortAddr) && !Arrays.equals(ShortAddr, SHORT_BROADCAST_ADDR))
+                        if (!Arrays.equals(ShortAddr, macShortAddr) && !Arrays.equals(ShortAddr, SHORT_BROADCAST_ADDR))
                             return false;
                     }
                     break;
