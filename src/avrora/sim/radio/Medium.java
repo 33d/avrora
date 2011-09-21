@@ -418,7 +418,7 @@ public class Medium {
                     locked = false;
                     nextByte(false, (byte) 0);
                     if (probeList != null) probeList.fireAfterReceiveEnd(Receiver.this);
-                    clock.insertEvent(this, leadCycles + cyclesPerByte);
+                    clock.insertEvent(this, leadCycles);
                 }
             }
 
