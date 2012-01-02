@@ -572,20 +572,25 @@ public class CC2420Radio implements Radio {
         if (configByteCnt == 1) {
             // the first byte is the address byte
             byte status = getStatus();
-            boolean ramop = Arithmetic.getBit(val, 7);
-            boolean readop = Arithmetic.getBit(val, 6);
-            configRegAddr = val & 0x3f;
-            configRAMAddr = val & 0x7f;
-            computeStatus();
-            if (configRegAddr <= 15) {
-                // execute the command strobe
-                strobe(configRegAddr);
-                configByteCnt = 0;
-            } else {
-                if (ramop) configCommand = CMD_R_RAM;
-                else if (configRegAddr == TXFIFO) configCommand = readop ? CMD_R_TX : CMD_W_TX;
-                else if (configRegAddr == RXFIFO) configCommand = readop ? CMD_R_RX : CMD_W_RX;
-                else configCommand = readop ? CMD_R_REG : CMD_W_REG;
+            if (Arithmetic.getBit(val, 7)) {
+                // RAM/register bit is set, i.e. RAM should be accessed
+                // byte2 determines R or R/W!
+                configCommand = CMD_R_RAM;
+                configRAMAddr = val & 0x7f;
+            }
+            else {
+                // command strobes or register access
+                boolean readop = Arithmetic.getBit(val, 6);
+                configRegAddr = val & 0x3f;
+                if (configRegAddr <= 15) {
+                    // execute the command strobe
+                    strobe(configRegAddr);
+                    configByteCnt = 0;
+                } else {
+                    if (configRegAddr == TXFIFO) configCommand = readop ? CMD_R_TX : CMD_W_TX;
+                    else if (configRegAddr == RXFIFO) configCommand = readop ? CMD_R_RX : CMD_W_RX;
+                    else configCommand = readop ? CMD_R_REG : CMD_W_REG;
+                }
             }
             return status;
         } else if (configByteCnt == 2) {
@@ -610,8 +615,8 @@ public class CC2420Radio implements Radio {
                     return writeFIFO(rxFIFO, val, false);
                 case CMD_R_RAM:
                     configRAMBank = (val >> 6) & 0x3;
-                    if (Arithmetic.getBit(val, 5)) configCommand = CMD_R_RAM;
-                    else configCommand = CMD_W_RAM;
+                    if (!Arithmetic.getBit(val, 5)) 
+                        configCommand = CMD_W_RAM;
                     return 0;
             }
         } else {
@@ -638,15 +643,29 @@ public class CC2420Radio implements Radio {
                 case CMD_W_RX:
                     return writeFIFO(rxFIFO, val, false);
                 case CMD_R_RAM:
-                    if (configRAMBank == 0x00) return txFIFO.peek(configRAMAddr);
-                    else if (configRAMBank == 0x01) return rxFIFO.peek(configRAMAddr);
-                    else if (configRAMBank == 0x02) return ReadSecurityBank(configRAMAddr + (configByteCnt - 3));
-                    return 0;
+                    byte retval;
+                    if (configRAMBank == 0x00) 
+                        retval = txFIFO.peek(configRAMAddr);
+                    else if (configRAMBank == 0x01)
+                        retval = rxFIFO.peek(configRAMAddr);
+                    else if (configRAMBank == 0x02) 
+                        retval = ReadSecurityBank(configRAMAddr);
+                    else
+                        retval = 0;
+                    configRAMAddr++;
+                    return retval;
                 case CMD_W_RAM:
-                    if (configRAMBank == 0x00) return txFIFO.poke(configRAMAddr, val);
-                    else if (configRAMBank == 0x01) return rxFIFO.poke(configRAMAddr, val);
-                    else if (configRAMBank == 0x02)  return WriteSecurityBank(configRAMAddr + (configByteCnt - 3), val);
-                    return 0;
+                    if (configRAMBank == 0x00) {
+                        retval = txFIFO.poke(configRAMAddr, val);
+                    }
+                    else if (configRAMBank == 0x01) 
+                        retval = rxFIFO.poke(configRAMAddr, val);
+                    else if (configRAMBank == 0x02)  
+                        retval = WriteSecurityBank(configRAMAddr, val);
+                    else
+                        retval = 0;
+                    configRAMAddr++;
+                    return retval;
             }
         }
         return 0;
