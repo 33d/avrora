@@ -152,6 +152,7 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
 
         private void output() {
             // read the bits in the control register for compare mode
+            // TODO: this is not correct for all modes...
             switch (mode.value) {
                 case 1:
                     outputComparePin.write(!outputComparePin.read()); // toggle
@@ -498,13 +499,15 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
         }
 
         public void fire() {
+            // TODO: set OCFnA/ICFn flag when OCRnA/ICRn define TOP and TOP is reached
             int ncount = read16(TCNTnH_reg, TCNTnL_reg);
             tickerStart(ncount);
-            if (compareRegHigh != null && ncount == read16(compareRegHigh, compareRegLow)) {
+            if (ncount >= MAX) {
+                // OCRn/ICRn == MAX, then overflow is handled as in normal mode
+                overflow();
                 ncount = BOTTOM;
             }
-            else if (ncount >= MAX) {
-                overflow();
+            else if (compareRegHigh != null && ncount == read16(compareRegHigh, compareRegLow)) {
                 ncount = BOTTOM;
             }
             else {
@@ -525,6 +528,7 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
             compareRegLow = compareRegL;
         }
         public void fire() {
+            // TODO: set OCFnA/ICFn flag when OCRnA/ICRn define TOP and TOP is reached
             int ncount = read16(TCNTnH_reg, TCNTnL_reg);
             tickerStart(ncount);
             int top = this.top;
@@ -557,6 +561,7 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
             compareRegLow = compareRegL;
         }
         public void fire() {
+            // TODO: set OCFnA/ICFn flag when OCRnA/ICRn define TOP and TOP is reached
             int ncount = read16(TCNTnH_reg, TCNTnL_reg);
             tickerStart(ncount);
             

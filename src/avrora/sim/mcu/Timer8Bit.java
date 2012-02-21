@@ -239,6 +239,7 @@ public abstract class Timer8Bit extends AtmelInternalDevice {
             // under NORMAL, there is no pin action for a compare match
             // under CTC, the action is to clear the pin.
 
+            // TODO: this implementation is probably not correct...
             if (count == compare) {
                 switch (COMn.getValue()) {
                     case 1:
@@ -275,6 +276,7 @@ public abstract class Timer8Bit extends AtmelInternalDevice {
     class Mode_PWM implements Simulator.Event {
         protected byte increment = 1;
         public void fire() {
+            // TODO: OCn handling
             int ncount = (int)TCNTn_reg.read() & 0xff;
             tickerStart(ncount);
             if (ncount >= MAX) {
@@ -296,11 +298,12 @@ public abstract class Timer8Bit extends AtmelInternalDevice {
         public void fire() {
             int ncount = (int)TCNTn_reg.read() & 0xff;
             tickerStart(ncount);
-            if (ncount == ((int)OCRn_reg.read() & 0xff)) {
+            if (ncount >= MAX) {
+                // OCRn == MAX, then overflow is handled as in normal mode
+                overflow();
                 ncount = BOTTOM;
             }
-            else if (ncount >= MAX) {
-                overflow();
+            else if (ncount == ((int)OCRn_reg.read() & 0xff)) {
                 ncount = BOTTOM;
             }
             else {
