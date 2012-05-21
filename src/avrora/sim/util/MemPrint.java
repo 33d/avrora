@@ -65,6 +65,12 @@ public class MemPrint extends Simulator.Watch.Empty {
         }
     }
 
+    static private int getInt16(AtmelInterpreter a, int offset) {
+        final int l = a.getDataByte(offset);
+        final int h = a.getDataByte(offset + 1);
+        return ((h & 0xff) << 8) + (l & 0xff);
+    }
+
     public void fireBeforeWrite(State state, int data_addr, byte value) {
             if (data_addr != base) {
                 Terminal.printRed("Unexpected interception by printer!");
@@ -79,9 +85,7 @@ public class MemPrint extends Simulator.Watch.Empty {
             switch (value) {
                 case 0x1://for 2byte hexadecimals
                 case 0x3://for 2byte integers
-                    int l = a.getDataByte(base + 1);
-                    int h = a.getDataByte(base + 2);
-                    int v = ((h & 0xff) << 8) + (l & 0xff);
+                    final int v = getInt16(a, base + 1);
                     if (value == 0x1) {
                         fil.append(StringUtil.toHex(v, 4));
                         buf.append(StringUtil.toHex(v, 4));
@@ -93,13 +97,27 @@ public class MemPrint extends Simulator.Watch.Empty {
                         break;
                     }
                     break;
-                case 0x2://for strings
+                case 0x6://for string pointers
+                    final int strAddr = getInt16(a, base + 1);
                     for (int i = 0; i <= max; i++) {
-                        byte b = a.getDataByte(base + i + 1);
+                        byte b = a.getDataByte(strAddr + i);
                         if (b == 0) break;//break if end of string
                         fil.append(String.valueOf((char) b));
                         if (b != 10) buf.append(String.valueOf((char) b));//not return char
                         else if (i == 0) ret = true;//return line
+                    }
+                    break;
+                case 0x7://for binary hex dumps
+                    final int bufAddr = getInt16(a, base + 1);
+                    final int bufLen = getInt16(a, base + 3);
+                    for (int i = 0; i < bufLen; i++) {
+                        final byte b = a.getDataByte(bufAddr + i);
+                        if (i > 0) {
+                            fil.append(" ");
+                            buf.append(" ");
+                        }
+                        fil.append(StringUtil.toHex(b, 2));
+                        buf.append(StringUtil.toHex(b, 2));
                     }
                     break;
                 case 0x4://for 4byte hexadecimals
@@ -116,6 +134,7 @@ public class MemPrint extends Simulator.Watch.Empty {
                         break;
                     }
                     break;
+                case 0x2://for strings
                 default://for already formatted variables (i.e. TinyOS printf)
                     for (int i = 0; i <= max; i++) {
                         byte b = a.getDataByte(base + i + 1);

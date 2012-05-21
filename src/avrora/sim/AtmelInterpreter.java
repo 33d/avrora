@@ -100,7 +100,7 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
 
     protected boolean sleeping;
 
-    protected boolean justReturnedFromInterrupt;
+    protected boolean justActivatedInterrupts;
 
     public class StateImpl implements LegacyState {
 
@@ -1036,9 +1036,12 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
      * The <code>enableInterrupts()</code> method enables all of the interrupts.
      */
     public void enableInterrupts() {
-        I = true;
-        innerLoop = false;
-        interrupts.enableAll();
+        if (!I) {
+            I = true;
+            justActivatedInterrupts = true;
+            innerLoop = false;
+            interrupts.enableAll();
+        }
     }
 
     /**

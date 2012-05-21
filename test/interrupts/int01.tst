@@ -109,40 +109,40 @@ main {
 
 result {
 0 INS;
-126 A.beforeRead;
-126 A.afterRead;
-217 B.beforeRead;
-217 B.afterRead;
-317 C.beforeRead;
-317 C.afterRead;
-417 D.beforeRead;
-417 D.afterRead;
-517 E.beforeRead;
-517 E.afterRead;
-617 F.beforeRead;
-617 F.afterRead;
-717 G.beforeRead;
-717 G.afterRead;
-817 H.beforeRead;
-817 H.afterRead;
-917 I.beforeRead;
-917 I.afterRead;
-1017 J.beforeRead;
-1017 J.afterRead;
-1117 K.beforeRead;
-1117 K.afterRead;
-1217 L.beforeRead;
-1217 L.afterRead;
-1317 M.beforeRead;
-1317 M.afterRead;
-1417 N.beforeRead;
-1417 N.afterRead;
-1517 O.beforeRead;
-1517 O.afterRead;
-1617 P.beforeRead;
-1617 P.afterRead;
-1717 Q.beforeRead;
-1717 Q.afterRead;
+127 A.beforeRead;
+127 A.afterRead;
+235 B.beforeRead;
+235 B.afterRead;
+343 C.beforeRead;
+343 C.afterRead;
+451 D.beforeRead;
+451 D.afterRead;
+523 E.beforeRead;
+523 E.afterRead;
+631 F.beforeRead;
+631 F.afterRead;
+739 G.beforeRead;
+739 G.afterRead;
+847 H.beforeRead;
+847 H.afterRead;
+919 I.beforeRead;
+919 I.afterRead;
+1027 J.beforeRead;
+1027 J.afterRead;
+1135 K.beforeRead;
+1135 K.afterRead;
+1243 L.beforeRead;
+1243 L.afterRead;
+1351 M.beforeRead;
+1351 M.afterRead;
+1423 N.beforeRead;
+1423 N.afterRead;
+1531 O.beforeRead;
+1531 O.afterRead;
+1639 P.beforeRead;
+1639 P.afterRead;
+1747 Q.beforeRead;
+1747 Q.afterRead;
  # 1817 R.beforeRead; #<--- R through T disabled in this file only
  # 1817 R.afterRead; #<---- see note above in event INS
  # 1917 S.beforeRead; 
@@ -150,24 +150,24 @@ result {
  # 2017 T.beforeRead;
  # 2017 T.afterRead;
 
-2156 U.beforeRead; #<--------- larger delay due to bigger handler
-2156 U.afterRead;  
+2148 U.beforeRead; #<--------- larger delay due to bigger handler
+2148 U.afterRead;  
 
 #2217 V.beforeRead; <-- disabled (see note above in INS)
 #2217 V.afterRead; 
 
 # delay in interrupt firing is 18 here after for some reason
 
-2418 X.beforeRead;
-2418 X.afterRead;
-2518 Y.beforeRead;
-2518 Y.afterRead;
-2618 Z.beforeRead;
-2618 Z.afterRead;
-2718 AA.beforeRead;
-2718 AA.afterRead;
-2818 AB.beforeRead;
-2818 AB.afterRead;
-2918 AC.beforeRead;
-2918 AC.afterRead;
+2428 X.beforeRead;
+2428 X.afterRead;
+2536 Y.beforeRead;
+2536 Y.afterRead;
+2644 Z.beforeRead;
+2644 Z.afterRead;
+2752 AA.beforeRead;
+2752 AA.afterRead;
+2824 AB.beforeRead;
+2824 AB.afterRead;
+2932 AC.beforeRead;
+2932 AC.afterRead;
 }

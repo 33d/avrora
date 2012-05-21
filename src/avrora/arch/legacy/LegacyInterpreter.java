@@ -84,22 +84,20 @@ public class LegacyInterpreter extends AtmelInterpreter implements LegacyInstrVi
         cyclesConsumed = 0;
 
         while (shouldRun) {
-
             // TODO: would a "mode" and switch be faster than several branches?
             if (delayCycles > 0) {
                 advanceClock(delayCycles);
                 delayCycles = 0;
             }
 
-            // TODO: do this with an event fired after the RETI instruction?
-            if (justReturnedFromInterrupt) {
-                // don't process the interrupt if we just returned from
-                // an interrupt handler, because the hardware manual says
-                // that at least one instruction is executed after
-                // returning from an interrupt.
-                justReturnedFromInterrupt = false;
-            } else if (I) {
+            if (justActivatedInterrupts) {
+                // If interrupts were just activated, we need to suppress
+                // processing any pending interrupts by one instruction.
+                step();
+                continue;
+            }
 
+            if (I) {
                 // check if there are any pending (posted) interrupts
                 long pendingInterrupts = interrupts.getPendingInterrupts();
                 if (pendingInterrupts != 0) {
@@ -129,12 +127,11 @@ public class LegacyInterpreter extends AtmelInterpreter implements LegacyInstrVi
         }
 
         // handle any interrupts
-        if (justReturnedFromInterrupt) {
-            // don't process the interrupt if we just returned from
-            // an interrupt handler, because the hardware manual says
-            // that at least one instruction is executed after
-            // returning from an interrupt.
-            justReturnedFromInterrupt = false;
+        if (justActivatedInterrupts) {
+            // don't process interrupts if we just activated them, because
+            // the hardware manual says that at least one instruction is
+            // executed after activating interrupts.
+            justActivatedInterrupts = false;
         } else if (I) {
 
             // check if there are any pending (posted) interrupts
@@ -1169,7 +1166,6 @@ public class LegacyInterpreter extends AtmelInterpreter implements LegacyInstrVi
         byte tmp_1 = popByte();
         nextPC = uword(tmp_1, tmp_0) * 2;
         enableInterrupts();
-        justReturnedFromInterrupt = true;
         cyclesConsumed += 4;
     }
 

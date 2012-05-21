@@ -36,12 +36,10 @@ import avrora.sim.Simulator;
 import avrora.sim.util.MemPrint;
 import avrora.core.Program;
 import avrora.core.SourceMapping;
-
-import cck.text.StringUtil;
 import cck.util.Option;
-
-import java.text.StringCharacterIterator;
-import java.util.Iterator;
+import cck.util.Util;
+import cck.text.Verbose;
+import cck.text.Printer;
 
 /**
  * The <code>PrintMonitor</code> gives apps a simple way to tell the
@@ -52,58 +50,69 @@ import java.util.Iterator;
  */
 public class PrintMonitor extends MonitorFactory {
 
-    protected final Option.Str VARIABLENAME = newOption("VariableName","debugbuf1" ,
-            "This option specifies the name of the variable to print. See general description!");
-    protected final Option.Str MAX = newOption("max","30" ,
-            "This option specifies the maximum length of the variable to print.");
-    protected final Option.Str LOG = newOption("printlogfile", "",
-            "This option specifies whether the print monitor should log changes to each " +
-            "node's energy state. If this option is specified, then each node's print " +
-            "statements will be written to <option>.#, where '#' represents the " +
-            "node ID.");
+    protected final Option.Str VARIABLENAME = newOption("VariableName", "debugbuf1" ,
+            "This option specifies the name of the variable marking the base address of " +
+            "the memory region to watch.");
     protected final Option.Str BASEADDR = newOption("base", "",
-            "This option specifies the base direction of the SRAM to watch.");
-    
+            "This option specifies the starting address in SRAM of the memory region to " +
+            "watch for instructions. (If specified, it takes precedence over VariableName).");
+    protected final Option.Str MAX = newOption("max", "30" ,
+            "This option specifies the maximum length of the data to print. It should not " +
+            "be larger than the DEBUGBUF_SIZE used in AvroraPrint.h");
+    protected final Option.Str LOG = newOption("printlogfile", "",
+            "If this option is specified, then each node's print statements will be " +
+            "written to <option>.#, where '#' represents the node ID.");
+
+    static final Printer verbosePrinter = Verbose.getVerbosePrinter("c-print");
+
     public class Monitor implements avrora.monitors.Monitor {
-        public final MemPrint memprofile;        
-        private final String varname = VARIABLENAME.get();             
-        int LEN = Integer.parseInt(MAX.get());       
-        int BASE;
-        protected Simulator simulator;
-        private String fileName;        
 
         Monitor(Simulator s) {
-            this.simulator = s;           
-            Program p = s.getProgram();               
-            Iterator it = p.getSourceMapping().getIterator();        
-            //If you enter the variable name will look into the map file fo
-            while (it.hasNext()) {
-                SourceMapping.Location tempLoc = (SourceMapping.Location)it.next();
-                //Look for the label that equals the desired variable name inside the map file
-                if (varname.equals(tempLoc.name)){            
-                    String st = StringUtil.toHex((long)tempLoc.vma_addr,3);
-                    st = st.substring(3,6);
-                    BASE = StringUtil.readHexValue(new StringCharacterIterator(st),3);
-                }                                         
+            final int max = Integer.parseInt(MAX.get());
+            int base = -1;
+
+            if (!BASEADDR.isBlank()) {
+                // The address is given directly, so we do not need to look-up the variable.
+                base = Integer.parseInt(BASEADDR.get());
+            } else {
+                // Look for the label that equals the desired variable name inside the map file.
+                final SourceMapping map = s.getProgram().getSourceMapping();
+                final SourceMapping.Location location = map.getLocation(VARIABLENAME.get());
+                if (location != null) {
+                    // Strip any memory-region markers from the address.
+                    base = location.vma_addr & 0xffff;
+                } else {
+                    Util.userError("c-print monitor could not find variable \"" +
+                            VARIABLENAME.get() + "\"");
+                }
             }
-            //If you enter directly the addr will look into that addr
-            if (!BASEADDR.isBlank()) BASE = Integer.parseInt(BASEADDR.get());
-            if ( !LOG.isBlank() ) fileName = LOG.get() + simulator.getID();  
-            else fileName = "";
-            memprofile = new MemPrint(BASE, LEN, fileName);
-            s.insertWatch(memprofile, BASE);                                    
+
+            String fileName;
+            if (!LOG.isBlank()) {
+                fileName = LOG.get() + s.getID();
+            } else {
+                fileName = "";
+            }
+
+            if (base != -1) {
+                verbosePrinter.println("c-print monitor monitoring SRAM at " +
+                        base + "; maximum length " + max);
+                MemPrint memPrint = new MemPrint(base, max, fileName);
+                s.insertWatch(memPrint, base);
+            } else {
+                verbosePrinter.println("c-print monitor not monitoring any memory region");
+            }
         }
 
         public void report() {
             // do nothing.
         }
     }
-     
 
     public PrintMonitor() {
-        super("The \"print\" monitor watches a dedicated range of SRAM for instructions " +
-                "to print a string or int to the screen. Since it expects a special format of this " +
-                "memory location use together with AvroraPrint.h");
+        super("The \"c-print\" monitor watches a dedicated range of SRAM for instructions " +
+                "to print a string or int to the screen. Since it expects a special format " +
+                "of this memory location use together with AvroraPrint.h");
     }
 
     public avrora.monitors.Monitor newMonitor(Simulator s) {

@@ -45,9 +45,6 @@
  * Known bugs/limitations:
  *
  * 	 - If you include many print statements the emulator will slow down 
- * 	 - Print statements in arrow, without any operation in the middle, will 
- * 	 only print the last statement. I think this is beacuse the memory location 
- * 	 is re-written before printing the value in Avrora. 	 
  * 
  * Notes:	 
  * 	
@@ -63,68 +60,78 @@
 #ifndef _AVRORAPRINT_H_
 #define _AVRORAPRINT_H_
 
-#define DEBUGBUF_SIZE 64
 #include <stdarg.h>
-volatile char debugbuf1[DEBUGBUF_SIZE+1];
-volatile char *debugbuf;
+#ifdef __GNUC__
+# define AVRORA_PRINT_INLINE __inline__
+#else
+/* Try the C99 keyword instead. */
+# define AVRORA_PRINT_INLINE inline
+#endif
+volatile uint8_t debugbuf1[5];
 
-#define printChar(__char) {	\
-	init();	\
-	debugbuf[0] = __char;	\
-	debugbuf[1] = 0;		\
-	vartype(2);	\
-}
-#define printInt8(__char) {	\
-	init(); \
-	debugbuf[0] = __char;	\
-	debugbuf[1] = 0;		\
-	vartype(3);			\
-}
-#define printInt16(__int) {	\
-	init(); \
-	debugbuf[0] = (uint8_t)(uint16_t)__int&0x00ff;	\
-	debugbuf[1] = (uint8_t)((uint16_t)__int>>8)&0x00ff;		\
-	vartype(3);		\
-}
-#define printInt32(__int) {	\
-	init();\
-	debugbuf[0] = (uint8_t)((uint32_t)__int)&0x00ff;	\
-	debugbuf[1] = (uint8_t)((uint32_t)__int>>8)&0x00ff;	\
-	debugbuf[2] = (uint8_t)((uint32_t)__int>>16)&0x00ff;	\
-	debugbuf[3] = (uint8_t)((uint32_t)__int>>24)&0x00ff;	\
-	vartype(5);		\
-}
-#define printStr(__str) { \
-	init();	\
-	strcpy(debugbuf, __str);	\
-	vartype(2);	\
-}
-#define printHex8(__char) { \
-	init(); \
-	debugbuf[0] = __char;   \
-	debugbuf[1] = 0;        \
-	vartype(1);		\
-}
-#define printHex16(__int) { \
-	init(); \
-	debugbuf[0] = __int&0x00ff; \
-	debugbuf[1] = (__int>>8)&0x00ff;     \
-	vartype(1);		\
-}
-#define printHex32(__int) { \
-	init();\
-	debugbuf[0] = (uint8_t)((uint32_t)__int)&0x00ff; \
-	debugbuf[1] = (uint8_t)((uint32_t)__int>>8)&0x00ff;    \
-	debugbuf[2] = (uint8_t)((uint32_t)__int>>16)&0x00ff;   \
-	debugbuf[3] = (uint8_t)((uint32_t)__int>>24)&0x00ff;   \
-	vartype(4);	\
-}
-void init(){
-	debugbuf = &debugbuf1[1];
-}
-void vartype(uint8_t a)
+static AVRORA_PRINT_INLINE void avroraPrintSetVarType(uint8_t a)
 {
 	debugbuf1[0] = a;
+}
+static AVRORA_PRINT_INLINE void printChar(char c)
+{
+	debugbuf1[1] = c;
+	debugbuf1[2] = 0;
+	avroraPrintSetVarType(2);
+}
+static AVRORA_PRINT_INLINE void printInt8(char c)
+{
+	debugbuf1[1] = c;
+	debugbuf1[2] = 0;
+	avroraPrintSetVarType(3);
+}
+static AVRORA_PRINT_INLINE void printInt16(int16_t i)
+{
+	debugbuf1[1] = (uint8_t)((uint16_t) i) & 0x00ff;
+	debugbuf1[2] = (uint8_t)((uint16_t) i >> 8) & 0x00ff;
+	avroraPrintSetVarType(3);
+}
+static AVRORA_PRINT_INLINE void printInt32(int32_t i)
+{
+	debugbuf1[1] = (uint8_t)((uint32_t) i) & 0x00ff;
+	debugbuf1[2] = (uint8_t)((uint32_t) i >> 8) & 0x00ff;
+	debugbuf1[3] = (uint8_t)((uint32_t) i >> 16) & 0x00ff;
+	debugbuf1[4] = (uint8_t)((uint32_t) i >> 24) & 0x00ff;
+	avroraPrintSetVarType(5);
+}
+static AVRORA_PRINT_INLINE void printStr(const char * const s)
+{
+	debugbuf1[1] = (uint8_t)((uint16_t) s) & 0x00ff;
+	debugbuf1[2] = (uint8_t)((uint16_t) s >> 8) & 0x00ff;
+	avroraPrintSetVarType(6);
+}
+static AVRORA_PRINT_INLINE void printHexBuf(const uint8_t *b, uint16_t len)
+{
+	debugbuf1[1] = (uint8_t)((uint16_t) b) & 0x00ff;
+	debugbuf1[2] = (uint8_t)((uint16_t) b >> 8) & 0x00ff;
+	debugbuf1[3] = (uint8_t)((uint16_t) len) & 0x00ff;
+	debugbuf1[4] = (uint8_t)((uint16_t) len >> 8) & 0x00ff;
+	avroraPrintSetVarType(7);
+}
+static AVRORA_PRINT_INLINE void printHex8(uint8_t c)
+{
+	debugbuf1[1] = c;
+	debugbuf1[2] = 0;
+	avroraPrintSetVarType(1);
+}
+static AVRORA_PRINT_INLINE void printHex16(uint16_t i)
+{
+	debugbuf1[1] = i & 0x00ff;
+	debugbuf1[2] = (i >> 8) & 0x00ff;
+	avroraPrintSetVarType(1);
+}
+static AVRORA_PRINT_INLINE void printHex32(uint32_t i)
+{
+	debugbuf1[1] = (uint8_t)((uint32_t) i) & 0x00ff;
+	debugbuf1[2] = (uint8_t)((uint32_t) i >> 8) & 0x00ff;
+	debugbuf1[3] = (uint8_t)((uint32_t) i >> 16) & 0x00ff;
+	debugbuf1[4] = (uint8_t)((uint32_t) i >> 24) & 0x00ff;
+	avroraPrintSetVarType(4);
 }
 
 #endif

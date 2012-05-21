@@ -291,7 +291,9 @@ public class SensorSimulation extends Simulation {
                 "with each other over radios. There are options to specify how many of each type of sensor node to " +
                 "instantiate, as well as the program to be loaded onto each node, and an optional topology file " +
                 "that describes the physical layout of the sensor network. Also, each node's sensors can be " +
-                "supplied with random or replay sensor data through the \"sensor-data\" option.", options);
+                "supplied with random or replay sensor data through the \"sensor-data\" option. " +
+                "For sensor-network simulation type, the default platform is set to \"micaz\" and "+
+                "the default monitors are set to \"leds,packet\".", options);
 
         PLATFORM.setNewDefault("micaz");       // set the new default monitors
         MONITORS.setNewDefault("leds,packet"); // set the new default monitors
