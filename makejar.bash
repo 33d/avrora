@@ -11,6 +11,10 @@ else
     RELEASE=$1
 fi
 
+if [[ ! -d jars ]]; then
+    mkdir jars
+fi
+
 cd bin
 
 JARFILE=avrora-$RELEASE.jar
