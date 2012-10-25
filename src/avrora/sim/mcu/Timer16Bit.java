@@ -73,6 +73,7 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
     
     public class InputCapturePin implements BooleanView {
         boolean level;
+        private ValueSetListener listener;
 
         public boolean getValue() {
             return level;
@@ -84,7 +85,14 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
                 // the ICESn (input capture edge select) bit determines if a rising (1) or falling (0) edge is used as trigger
                 if ((ICESn_flag.value == 1) == level)
                   captureInput();
+                if (listener != null) {
+                    listener.onValueSet(this, v);
+                }
             }
+        }
+
+        public void setValueSetListener(ValueSetListener listener) {
+            this.listener = listener;
         }
     }
 

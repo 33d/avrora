@@ -3,15 +3,19 @@
 checkSuccess() {
 
     if [ "$?" = 0 ]; then
-	echo " -> $1"
+        echo " -> $1"
     else
-	echo "*** STOP: $2 ***"
-	$3
-	exit 1
+        echo "*** STOP: $2 ***"
+        $3
+        exit 1
     fi
 }
 
-TESTS='interpreter probes disassembler interrupts timers'
+TESTS=$@
+if [ -z "$TESTS" ]; then 
+    TESTS='interpreter probes disassembler interrupts timers'
+fi
+
 for t in $TESTS; do
 
     echo Running tests in test/$t...
