@@ -12,7 +12,8 @@ JINTGEN_SRC := $(shell find $(SRC_DIR)/jintgen -name '*.java')
 
 JAVAC        = javac
 JAVADOC      = javadoc
-CFLAGS       = -source 1.6 -d $(BIN_DIR)
+CFLAGS       = -source 1.7 -d $(BIN_DIR)
+C6FLAGS      = -source 1.6 -d $(BIN_DIR)
 C5FLAGS      = -source 1.5 -d $(BIN_DIR)
 DOCFLAGS     = -breakiterator -sourcepath $(SRC_DIR) -d $(DOC_DIR)
 
@@ -25,7 +26,7 @@ cck:
 	@$(JAVAC) $(CFLAGS) $(CCK_SRC)
 
 jintgen:
-	@$(JAVAC) $(C5FLAGS) $(CCK_SRC) $(JINTGEN_SRC)
+	@$(JAVAC) $(CFLAGS) $(CCK_SRC) $(JINTGEN_SRC)
 
 clean:
 	@rm -rf bin/cck bin/avrora bin/jintgen doc/*.html doc/cck doc/avrora doc/jintgen

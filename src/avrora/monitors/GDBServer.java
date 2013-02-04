@@ -48,7 +48,6 @@ import java.net.Socket;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.util.HashMap;
-import java.util.Iterator;
 
 /**
  * The <code>GDBServer</code> class implements a monitor that can communicate to gdb via
@@ -70,7 +69,7 @@ public class GDBServer extends MonitorFactory {
             "the GDB front-end. If only a port number is given, it allows to control node 0. Using a list " +
             "($node:$port,$node:$port,...) the control port for each node can be specified.");
 
-    HashMap portMap;
+    HashMap<Integer, Integer> portMap;
     
     /**
      * The <code>GDBMonitor</code> class implements a monitor that can interactively debug
@@ -601,7 +600,7 @@ public class GDBServer extends MonitorFactory {
      */
     public GDBServer() {
         super(HELP);
-        portMap = new HashMap();
+        portMap = new HashMap<Integer, Integer>();
     }
 
     public void processOptions(Options o) {
@@ -616,9 +615,7 @@ public class GDBServer extends MonitorFactory {
             // just ignore and go on
         }
         // try to parse it as a list
-        Iterator i = PORTS.get().iterator();
-        while (i.hasNext()) {
-            String pid = (String)i.next();
+        for (String pid : PORTS.get()) {
             String[] str = pid.split(":");
             if ( str.length != 2 )
                 Util.userError("Format error in \"port\" option");
