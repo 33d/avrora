@@ -14,7 +14,6 @@ JAVAC        = javac
 JAVADOC      = javadoc
 CFLAGS       = -source 1.7 -d $(BIN_DIR)
 C6FLAGS      = -source 1.6 -d $(BIN_DIR)
-C5FLAGS      = -source 1.5 -d $(BIN_DIR)
 DOCFLAGS     = -breakiterator -sourcepath $(SRC_DIR) -d $(DOC_DIR)
 
 all: avrora
