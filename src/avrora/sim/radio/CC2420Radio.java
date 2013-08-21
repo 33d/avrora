@@ -129,6 +129,7 @@ public class CC2420Radio implements Radio {
     protected final ByteFIFO rxFIFO = new ByteFIFO(FIFO_SIZE);
     protected double BERtotal = 0.0D;
     protected int BERcount = 0;
+    protected boolean globalRxfifoOverflow = false;
 
     protected Medium medium;
     protected Transmitter transmitter;
@@ -295,6 +296,7 @@ public class CC2420Radio implements Radio {
         AutoAckPend = false;
         lastCRCok = false;
         ClearFlag = false;
+        globalRxfifoOverflow = false;
 
         // reset pins.
         FIFO_pin.setLevel(!FIFO_active);
@@ -712,7 +714,7 @@ public class CC2420Radio implements Radio {
         if (printer != null) {
             printer.println("CC2420 Read " + fifoName(fifo) + " -> " + StringUtil.toMultirepString(val, 8));
         }
-        if (fifo == rxFIFO) {
+        if (fifo == rxFIFO && !globalRxfifoOverflow) {
             if (fifo.empty()) {
                 // reset the FIFO pin when the read FIFO is empty.
                 FIFO_pin.setLevel(!FIFO_active);
@@ -1316,6 +1318,7 @@ public class CC2420Radio implements Radio {
                 FIFOP_pin.setLevel(FIFOP_active);
                 state = RECV_OVERFLOW;
                 lastCRCok = false;
+                globalRxfifoOverflow = true;
                 return false;
             }
             else {
@@ -1417,7 +1420,7 @@ public class CC2420Radio implements Radio {
         
         void startup() {
             stateMachine.transition(3);//change to receive state
-            state = RECV_SFD_SCAN;
+            state = globalRxfifoOverflow ? RECV_OVERFLOW : RECV_SFD_SCAN;
             clearBER();
             beginReceive(getFrequency());
             // according to measurements, the CCA pin is set approx. 2 bits earlier than 8 symbols (4 bytes) = 118ms
@@ -1438,6 +1441,7 @@ public class CC2420Radio implements Radio {
 
         void resetOverflow() {
             state = RECV_SFD_SCAN;
+            globalRxfifoOverflow = false;
         }
     }
 
