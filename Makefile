@@ -13,7 +13,7 @@ JINTGEN_SRC := $(shell find $(SRC_DIR)/jintgen -name '*.java')
 JAVAC        = javac
 JAVADOC      = javadoc
 CFLAGS       = -source 1.7 -d $(BIN_DIR)
-C6FLAGS      = -source 1.6 -d $(BIN_DIR)
+C6FLAGS      = -source 1.6 -target 1.6 -d $(BIN_DIR)
 DOCFLAGS     = -breakiterator -sourcepath $(SRC_DIR) -d $(DOC_DIR)
 
 all: avrora
